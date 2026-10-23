@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: 28 25 23;
+  --ink-soft: 87 83 78;
+  --ink-faint: 148 143 137;
+  --paper: 250 249 246;
+  --paper-raised: 255 255 255;
+  --paper-sunk: 241 239 234;
+  --line: 228 225 219;
+  --accent: 37 99 235;
+  --accent-soft: 219 234 254;
+  --weekend: 238 236 231;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: 236 234 230;
+    --ink-soft: 184 180 173;
+    --ink-faint: 125 121 115;
+    --paper: 20 19 18;
+    --paper-raised: 31 30 28;
+    --paper-sunk: 14 13 12;
+    --line: 52 50 47;
+    --accent: 96 165 250;
+    --accent-soft: 30 45 75;
+    --weekend: 38 36 34;
+    color-scheme: dark;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* Blage boje ispitnih rokova (style="--tint: #...") */
+.tint {
+  background: var(--tint);
+}
+.weekend {
+  background: rgb(var(--weekend));
+}
+@media (prefers-color-scheme: dark) {
+  .tint {
+    background: color-mix(in srgb, var(--tint) 16%, rgb(var(--paper)));
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+input,
+select,
+textarea {
+  @apply bg-paper-raised border border-line rounded-lg px-3 py-2 text-ink outline-none;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  @apply border-accent ring-2 ring-accent/20;
+}
+input[type='checkbox'] {
+  @apply w-4 h-4 p-0 accent-current;
+}
+input[type='color'] {
+  @apply p-0.5 h-9 w-12 cursor-pointer;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
