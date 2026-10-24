@@ -235,12 +235,14 @@ export function LineChart({
   color = 'rgb(var(--accent))',
   unit = '',
   goal,
+  ticks: tickCount = 3,
 }: {
   points: { x: string; y: number }[]
   height?: number
   color?: string
   unit?: string
   goal?: number
+  ticks?: number
 }) {
   if (points.length === 0) return <Empty>Još nema podataka.</Empty>
   const W = 600
@@ -259,7 +261,7 @@ export function LineChart({
   const sx = (i: number) => pad.l + (points.length === 1 ? (W - pad.l - pad.r) / 2 : (i / (points.length - 1)) * (W - pad.l - pad.r))
   const sy = (v: number) => pad.t + (1 - (v - min) / (max - min)) * (H - pad.t - pad.b)
   const d = points.map((p, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(p.y).toFixed(1)}`).join(' ')
-  const ticks = [min + (max - min) * 0.15, (min + max) / 2, max - (max - min) * 0.15]
+  const ticks = Array.from({ length: tickCount }, (_, i) => min + ((max - min) * (i + 0.5)) / tickCount)
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} preserveAspectRatio="none">
       {ticks.map((t, i) => (

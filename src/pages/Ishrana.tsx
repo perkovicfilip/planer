@@ -26,7 +26,7 @@ export default function Ishrana({ param }: { param?: string }) {
   const tab: Tab = param === 'lista' || param === 'kilaza' ? param : 'plan'
   const date = param && /^\d{4}-\d{2}-\d{2}$/.test(param) ? param : today()
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title="Ishrana"
         right={
@@ -132,17 +132,7 @@ function Plan({ date }: { date: string }) {
         </Card>
       </div>
 
-      <SectionTitle
-        action={
-          <span className="text-xs text-ink-faint">
-            {day.activity !== 'odmor' ? `${day.activity === 'plivanje' ? 'Plivanje' : 'Teretana'} u ${day.time} · ` : ''}
-            razmak {Math.floor(gap.gap / 60)}h{gap.gap % 60 ? ` ${gap.gap % 60}min` : ''}
-            {gap.samples >= 3 ? ' (naučeno)' : ''}
-          </span>
-        }
-      >
-        Obroci
-      </SectionTitle>
+      <SectionTitle>Obroci</SectionTitle>
       <Card className="px-4 py-1 mb-3">
         {meals.length === 0 ? (
           <Empty>Nema obroka za ovaj dan.</Empty>
@@ -151,7 +141,7 @@ function Plan({ date }: { date: string }) {
             {meals.map((m, i) => {
               const remind = mealRemindAt(exp[i], m, settings)
               return (
-                <li key={m.id} className="flex items-center gap-3 py-3">
+                <li key={m.id} className="flex items-center gap-3 py-2">
                   <CheckCircle
                     done={!!m.eatenAt}
                     color="#f59e0b"
@@ -160,18 +150,13 @@ function Plan({ date }: { date: string }) {
                   <div className={cx('flex-1 min-w-0', m.eatenAt && 'opacity-50')}>
                     <div className="flex items-center gap-2">
                       <span className="font-medium truncate">{m.name}</span>
-                      {m.slot && (
-                        <span className="text-[0.7rem] uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper-sunk text-ink-soft shrink-0">
-                          {m.slot === 'pre' ? 'pre treninga' : 'posle treninga'}
-                        </span>
-                      )}
                     </div>
                     <div className="text-xs text-ink-faint tabular">
                       {m.kcal} kcal · {m.protein} g proteina
                       {m.eatenAt
                         ? ` · pojeo u ${timeOf(m.eatenAt)}`
-                        : exp[i] !== null
-                          ? ` · oko ${fmtTime(exp[i])}${m.time ? '' : ''}${remind !== null ? ` · podsetnik ${fromMin(remind)}` : ''}`
+                        : m.time
+                          ? ` · planirano u ${m.time}${remind !== null ? ` · podsetnik ${fromMin(remind)}` : ''}`
                           : ''}
                     </div>
                   </div>
@@ -224,11 +209,9 @@ function Plan({ date }: { date: string }) {
 }
 
 function addFood(date: string, f: { id?: string; data: FoodData }, existing: Meal[], training: boolean) {
-  let slot: MealSlot = null
-  if (training) {
-    if (!existing.some((m) => m.slot === 'pre')) slot = 'pre'
-    else if (!existing.some((m) => m.slot === 'post')) slot = 'post'
-  }
+  const slot: MealSlot = null
+  void training
+  void existing
   const meal: Meal = { id: uid(), foodId: f.id, name: f.data.name, kcal: f.data.kcal, protein: f.data.protein, slot }
   const id = ensureMealDay(date)
   store.update<MealDayData>(id, (d) => ({ ...d, meals: [...d.meals, meal] }))
@@ -279,7 +262,7 @@ function AddMeal({ open, onClose, onAdd }: { open: boolean; onClose: () => void;
   const [saveToList, setSaveToList] = useState(true)
   const list = [...foods]
     .filter((f) => f.data.name.toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => Number(!!b.data.favorite) - Number(!!a.data.favorite) || a.data.name.localeCompare(b.data.name))
+    .sort((a, b) => Number(!!b.data.favorite) - Number(!!a.data.favorite) || a.data.name.localeCompare(b.data.name, 'sr', { numeric: true }))
 
   const addCustom = () => {
     if (!custom.name.trim()) return
@@ -395,17 +378,6 @@ function MealEditor({
           <input type="number" className="w-full" value={m.protein} onChange={(e) => set('protein', Number(e.target.value))} />
         </Field>
       </div>
-      <Field label="Vezano za trening">
-        <Segmented<'none' | 'pre' | 'post'>
-          value={m.slot ?? 'none'}
-          onChange={(v) => set('slot', v === 'none' ? null : v)}
-          options={[
-            { value: 'none', label: 'Ne' },
-            { value: 'pre', label: 'Pre' },
-            { value: 'post', label: 'Posle' },
-          ]}
-        />
-      </Field>
       <Field label="Planirano vreme (opciono)" hint="Prazno = aplikacija sama računa po prošlom obroku.">
         <input type="time" className="w-full" value={m.time ?? ''} onChange={(e) => set('time', e.target.value || undefined)} />
       </Field>
@@ -484,41 +456,57 @@ function CopyDay({ open, onClose, target }: { open: boolean; onClose: () => void
 // ---------------- Lista obroka ----------------
 
 function FoodLibrary() {
-  const foods = useKind<FoodData>('food').sort((a, b) => Number(!!b.data.favorite) - Number(!!a.data.favorite) || a.data.name.localeCompare(b.data.name))
+  const foods = useKind<FoodData>('food').sort((a, b) => Number(!!b.data.favorite) - Number(!!a.data.favorite) || a.data.name.localeCompare(b.data.name, 'sr', { numeric: true }))
   const [edit, setEdit] = useState<{ id?: string; data: FoodData } | null>(null)
+  const [q, setQ] = useState('')
+  const shown = foods.filter((f) => f.data.name.toLowerCase().includes(q.trim().toLowerCase()))
   return (
-    <div>
-      <div className="flex justify-between items-center mb-3">
-        <p className="text-sm text-ink-soft">Tvoji obroci sa kalorijama i proteinima.</p>
-        <Button variant="primary" onClick={() => setEdit({ data: { name: '', kcal: 0, protein: 0 } })}>
-          <Plus size={16} /> Novi
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
+      <div className="flex flex-wrap gap-2 items-center mb-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <input className="w-full pl-8" placeholder="Pretraži obroke…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <span className="text-xs text-ink-faint">{foods.length} obroka</span>
+        <Button variant="primary" className="ml-auto" onClick={() => setEdit({ data: { name: '', kcal: 0, protein: 0 } })}>
+          <Plus size={16} /> Novi obrok
         </Button>
       </div>
-      <Card className="px-4 py-1">
-        {foods.length === 0 ? (
-          <Empty>Lista je prazna.</Empty>
-        ) : (
-          <ul className="divide-y divide-line">
-            {foods.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 py-1.5">
+      {foods.length === 0 ? (
+        <Card>
+          <Empty>Lista je prazna — dodaj prvi obrok.</Empty>
+        </Card>
+      ) : (
+        <div className="md:flex-1 md:min-h-0 md:overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-1.5">
+            {shown.map((f) => (
+              <div
+                key={f.id}
+                onClick={() => setEdit({ id: f.id, data: f.data })}
+                className="group flex items-center gap-2 rounded-lg border border-line bg-paper-raised px-2.5 py-1.5 cursor-pointer hover:border-ink-faint"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{f.data.name}</div>
+                  <div className="text-xs text-ink-faint tabular">
+                    {f.data.kcal} kcal · {f.data.protein} g
+                  </div>
+                </div>
                 <button
                   aria-label="Omiljeno"
-                  onClick={() => store.update<FoodData>(f.id, (d) => ({ ...d, favorite: !d.favorite }))}
-                  className={f.data.favorite ? 'text-amber-500' : 'text-ink-faint'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    store.update<FoodData>(f.id, (d) => ({ ...d, favorite: !d.favorite }))
+                  }}
+                  className={cx('shrink-0', f.data.favorite ? 'text-amber-500' : 'text-ink-faint opacity-0 group-hover:opacity-100')}
                 >
-                  <Star size={16} className={f.data.favorite ? 'fill-amber-500' : ''} />
+                  <Star size={15} className={f.data.favorite ? 'fill-amber-500' : ''} />
                 </button>
-                <span className="flex-1">{f.data.name}</span>
-                <span className="text-sm tabular text-ink-soft">{f.data.kcal} kcal</span>
-                <span className="text-sm tabular text-ink-soft w-14 text-right">{f.data.protein} g</span>
-                <IconButton title="Izmeni" onClick={() => setEdit({ id: f.id, data: f.data })}>
-                  <Pencil size={15} />
-                </IconButton>
-              </li>
+              </div>
             ))}
-          </ul>
-        )}
-      </Card>
+          </div>
+          {shown.length === 0 && <Empty>Nema obroka koji odgovaraju pretrazi.</Empty>}
+        </div>
+      )}
       <Modal
         open={!!edit}
         onClose={() => setEdit(null)}
@@ -589,21 +577,10 @@ function Weight() {
   const last = weights[weights.length - 1]
   const first = weights[0]
   return (
-    <div>
-      <Card className="p-3 mb-4">
-        <div className="flex flex-wrap gap-2 items-end">
-          <Field label="Kilaža (kg)">
-            <input inputMode="decimal" className="w-32" value={kg} onChange={(e) => setKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
-          </Field>
-          <Field label="Datum">
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <Button variant="primary" className="mb-3" onClick={save}>
-            Upiši
-          </Button>
-        </div>
+    <div className="lg:grid lg:grid-cols-[1fr_260px] gap-4 md:flex-1 md:min-h-0">
+      <Card className="p-3 mb-4 lg:mb-0 flex flex-col">
         {last && (
-          <div className="text-sm text-ink-soft">
+          <div className="text-sm text-ink-soft mb-2">
             Poslednje: <b className="text-ink">{last.data.kg} kg</b> ({fmtShort(last.data.date)})
             {first && first.id !== last.id && (
               <>
@@ -617,23 +594,32 @@ function Weight() {
             )}
           </div>
         )}
+        <LineChart points={weights.slice(-60).map((w) => ({ x: fmtShort(w.data.date), y: w.data.kg }))} unit=" kg" color="#2563eb" height={440} ticks={6} />
       </Card>
-      <Card className="p-3 mb-4">
-        <LineChart points={weights.slice(-60).map((w) => ({ x: fmtShort(w.data.date), y: w.data.kg }))} unit=" kg" color="#2563eb" />
-      </Card>
-      <Card className="px-4 py-1">
-        <ul className="divide-y divide-line">
-          {[...weights].reverse().slice(0, 30).map((w) => (
-            <li key={w.id} className="flex items-center py-2 text-sm">
-              <span className="flex-1 text-ink-soft">{fmtShort(w.data.date)}</span>
-              <span className="tabular font-medium mr-3">{w.data.kg} kg</span>
-              <IconButton title="Obriši" onClick={() => store.remove(w.id)}>
-                <Trash2 size={14} />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <div className="flex flex-col gap-3 min-h-0">
+        <Card className="p-3">
+          <div className="flex gap-2">
+            <input inputMode="decimal" className="w-24" placeholder="kg" value={kg} onChange={(e) => setKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+            <input type="date" className="flex-1 min-w-0" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <Button variant="primary" className="w-full mt-2" onClick={save}>
+            Upiši kg
+          </Button>
+        </Card>
+        <Card className="px-3 py-1 min-h-0 flex-1 overflow-y-auto">
+          <ul className="divide-y divide-line">
+            {[...weights].reverse().map((w) => (
+              <li key={w.id} className="flex items-center py-1 text-sm">
+                <span className="flex-1 text-ink-soft">{fmtShort(w.data.date)}</span>
+                <span className="tabular font-medium mr-2">{w.data.kg} kg</span>
+                <IconButton title="Obriši" onClick={() => store.remove(w.id)} className="w-7 h-7">
+                  <Trash2 size={13} />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
     </div>
   )
 }
