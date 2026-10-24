@@ -189,10 +189,10 @@ function Plan({ date }: { date: string }) {
       </Button>
 
       {meals.length > 0 && (missingKcal > 0 || missingProt > 0) && (
-        <Suggestions kcal={missingKcal} protein={missingProt} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
+        <Suggestions kcal={missingKcal} protein={missingProt} planned={meals} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
       )}
 
-      <AddMeal open={adding} onClose={() => setAdding(false)} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
+      <AddMeal open={adding} planned={meals} onClose={() => setAdding(false)} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
       <MealEditor
         meal={editing}
         onClose={() => setEditing(null)}
@@ -223,7 +223,7 @@ function addFood(date: string, f: { id?: string; data: FoodData }, existing: Mea
   store.update<MealDayData>(id, (d) => ({ ...d, meals: [...d.meals, meal] }))
 }
 
-function Suggestions({ kcal, protein, onAdd }: { kcal: number; protein: number; onAdd: (f: { id: string; data: FoodData }) => void }) {
+function Suggestions({ kcal, protein, planned, onAdd }: { kcal: number; protein: number; planned: Meal[]; onAdd: (f: { id: string; data: FoodData }) => void }) {
   const foods = useKind<FoodData>('food')
   const picks = useMemo(() => {
     return [...foods]
@@ -233,11 +233,13 @@ function Suggestions({ kcal, protein, onAdd }: { kcal: number; protein: number; 
         const kScore = kcal > 0 ? Math.min(f.data.kcal, kcal) / Math.max(kcal, 1) : 0
         const pScore = protein > 0 ? Math.min(f.data.protein, protein) / Math.max(protein, 1) : 0
         const over = Math.max(0, f.data.kcal - kcal - 300) / 1000
-        return { f, score: kScore + pScore * 1.3 - over + (f.data.favorite ? 0.1 : 0) }
+        // već u planu za taj dan: jaka kazna za svako ponavljanje
+        const times = planned.filter((m) => m.foodId === f.id || m.name.trim().toLowerCase() === f.data.name.trim().toLowerCase()).length
+        return { f, times, score: kScore + pScore * 1.3 - over + (f.data.favorite ? 0.1 : 0) - times * 0.8 }
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-  }, [foods, kcal, protein])
+      .slice(0, 5)
+  }, [foods, kcal, protein, planned])
   return (
     <div className="mt-4">
       <SectionTitle>
@@ -261,64 +263,96 @@ function Suggestions({ kcal, protein, onAdd }: { kcal: number; protein: number; 
   )
 }
 
-function AddMeal({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (f: { id?: string; data: FoodData }) => void }) {
+function AddMeal({ open, onClose, onAdd, planned }: { open: boolean; onClose: () => void; onAdd: (f: { id?: string; data: FoodData }) => void; planned: Meal[] }) {
   const foods = useKind<FoodData>('food')
   const [q, setQ] = useState('')
   const [custom, setCustom] = useState<FoodData>({ name: '', kcal: 0, protein: 0 })
-  const [saveToList, setSaveToList] = useState(true)
+  const [showNew, setShowNew] = useState(false)
+  const [added, setAdded] = useState<string[]>([])
   const list = [...foods]
     .filter((f) => f.data.name.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => Number(!!b.data.favorite) - Number(!!a.data.favorite) || a.data.name.localeCompare(b.data.name, 'sr', { numeric: true }))
-
-  const addCustom = () => {
-    if (!custom.name.trim()) return
-    let id: string | undefined
-    if (saveToList) id = store.put<FoodData>('food', { ...custom, name: custom.name.trim() })
-    onAdd({ id, data: { ...custom, name: custom.name.trim() } })
-    setCustom({ name: '', kcal: 0, protein: 0 })
+  const close = () => {
+    setAdded([])
+    setQ('')
+    setShowNew(false)
     onClose()
   }
+  const add = (f: { id?: string; data: FoodData }) => {
+    onAdd(f)
+    setAdded((x) => [...x, f.data.name])
+  }
+  const addCustom = () => {
+    if (!custom.name.trim()) return
+    const data = { ...custom, name: custom.name.trim() }
+    const id = store.put<FoodData>('food', data)
+    add({ id, data })
+    setCustom({ name: '', kcal: 0, protein: 0 })
+    setShowNew(false)
+  }
+  const countIn = (f: { id: string; data: FoodData }) => planned.filter((m) => m.foodId === f.id).length
 
   return (
-    <Modal open={open} onClose={onClose} title="Dodaj obrok">
-      <div className="relative mb-3">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-        <input className="w-full pl-9" placeholder="Pretraži svoje obroke…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <div className="max-h-64 overflow-y-auto -mx-2 mb-4">
-        {list.length === 0 && <div className="text-sm text-ink-faint px-2 py-3">Nema obroka u listi — upiši novi ispod.</div>}
-        {list.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => {
-              onAdd(f)
-              onClose()
-            }}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-paper-sunk text-left"
-          >
-            {f.data.favorite && <Star size={13} className="text-amber-500 fill-amber-500" />}
-            <span className="flex-1">{f.data.name}</span>
-            <span className="text-xs text-ink-faint tabular">
-              {f.data.kcal} kcal · {f.data.protein} g
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="border-t border-line pt-3">
-        <div className="text-sm font-medium mb-2">Novi obrok</div>
-        <input className="w-full mb-2" placeholder="Naziv" value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} />
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <input type="number" placeholder="kcal" value={custom.kcal || ''} onChange={(e) => setCustom({ ...custom, kcal: Number(e.target.value) })} />
-          <input type="number" placeholder="proteini (g)" value={custom.protein || ''} onChange={(e) => setCustom({ ...custom, protein: Number(e.target.value) })} />
+    <Modal
+      open={open}
+      onClose={close}
+      wide
+      title="Dodaj obroke za ovaj dan"
+      footer={
+        <>
+          <span className="mr-auto text-sm text-ink-soft truncate">
+            {added.length ? `Dodato: ${added.join(', ')}` : 'Klikni na obroke koje hoćeš da dodaš.'}
+          </span>
+          <Button variant="primary" onClick={close}>
+            Gotovo
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-wrap gap-2 items-center mb-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <input className="w-full pl-8" placeholder="Pretraži obroke…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink-soft mb-3">
-          <input type="checkbox" checked={saveToList} onChange={(e) => setSaveToList(e.target.checked)} />
-          Sačuvaj i u listu obroka
-        </label>
-        <Button variant="primary" className="w-full" onClick={addCustom} disabled={!custom.name.trim()}>
-          Dodaj
+        <Button onClick={() => setShowNew(!showNew)}>
+          <Plus size={15} /> Novi obrok
         </Button>
       </div>
+      {showNew && (
+        <div className="flex flex-wrap gap-2 items-center mb-3 p-2 rounded-lg bg-paper-sunk">
+          <input className="flex-1 min-w-[160px]" placeholder="Naziv" value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} />
+          <input type="number" className="w-24" placeholder="kcal" value={custom.kcal || ''} onChange={(e) => setCustom({ ...custom, kcal: Number(e.target.value) })} />
+          <input type="number" className="w-28" placeholder="proteini g" value={custom.protein || ''} onChange={(e) => setCustom({ ...custom, protein: Number(e.target.value) })} onKeyDown={(e) => e.key === 'Enter' && addCustom()} />
+          <Button variant="primary" onClick={addCustom} disabled={!custom.name.trim()}>
+            Sačuvaj i dodaj
+          </Button>
+        </div>
+      )}
+      {list.length === 0 ? (
+        <Empty>{foods.length ? 'Nema obroka koji odgovaraju pretrazi.' : 'Lista je prazna — klikni „Novi obrok“.'}</Empty>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {list.map((f) => {
+            const n = countIn(f)
+            return (
+              <button
+                key={f.id}
+                onClick={() => add(f)}
+                className="text-left rounded-xl border-2 border-line bg-paper-raised px-3 py-2.5 hover:border-accent hover:bg-accent-soft/40 transition active:scale-[0.98]"
+              >
+                <div className="flex items-start gap-1.5">
+                  <span className="flex-1 font-semibold leading-snug">{f.data.name}</span>
+                  {f.data.favorite && <Star size={14} className="text-amber-500 fill-amber-500 shrink-0 mt-0.5" />}
+                </div>
+                <div className="text-sm text-ink-soft tabular mt-0.5">
+                  {f.data.kcal} kcal · {f.data.protein} g
+                </div>
+                {n > 0 && <div className="text-xs text-emerald-600 mt-0.5">✓ u planu{n > 1 ? ` ×${n}` : ''}</div>}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </Modal>
   )
 }

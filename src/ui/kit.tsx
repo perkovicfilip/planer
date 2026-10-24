@@ -124,12 +124,14 @@ export function Modal({
   title,
   children,
   footer,
+  wide,
 }: {
   open: boolean
   onClose: () => void
   title: string
   children: ReactNode
   footer?: ReactNode
+  wide?: boolean
 }) {
   useEffect(() => {
     if (!open) return
@@ -141,7 +143,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div role="dialog" aria-label={title} className="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-paper-raised sm:rounded-2xl rounded-t-2xl shadow-2xl safe-bottom">
+      <div role="dialog" aria-label={title} className={cx('relative w-full max-h-[92vh] flex flex-col bg-paper-raised sm:rounded-2xl rounded-t-2xl shadow-2xl safe-bottom', wide ? 'sm:max-w-4xl' : 'sm:max-w-lg')}>
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
           <h3 className="text-lg font-semibold">{title}</h3>
           <IconButton title="Zatvori" onClick={onClose}>
