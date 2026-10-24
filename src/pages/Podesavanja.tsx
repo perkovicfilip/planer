@@ -61,6 +61,9 @@ export default function Podesavanja() {
       <div className="break-inside-avoid">
       <SectionTitle>Opšte</SectionTitle>
       <Card className="p-3 mb-4">
+        <Field label="Veličina slova (px)" hint="Isto kao A− / A+ dole levo u meniju. Podrazumevano 17.">
+          <input type="number" min={13} max={22} className="w-full" value={s.uiSize || 17} onChange={num('uiSize')} />
+        </Field>
         <Field label="Ime (za pozdrav)">
           <input className="w-full" value={s.name} onChange={(e) => setS((d) => ({ ...d, name: e.target.value }))} />
         </Field>

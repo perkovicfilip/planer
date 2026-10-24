@@ -21,6 +21,7 @@ import { supabase, LOCAL_MODE, DEMO } from './lib/supabase'
 import { store, useSyncStatus } from './lib/store'
 import { useRoute, go, type Route } from './lib/router'
 import { ensureDefaults } from './data/defaults'
+import { useSettings } from './lib/logic'
 import { cx } from './ui/kit'
 import Auth from './pages/Auth'
 import Danas from './pages/Danas'
@@ -114,6 +115,40 @@ function SyncBadge() {
   )
 }
 
+function applySize(px: number) {
+  document.documentElement.style.setProperty('--ui-size', `${px}px`)
+  try {
+    localStorage.setItem('planer:ui-size', String(px))
+  } catch {
+    /* nije bitno */
+  }
+}
+try {
+  const saved = Number(localStorage.getItem('planer:ui-size'))
+  if (saved >= 12 && saved <= 22) document.documentElement.style.setProperty('--ui-size', `${saved}px`)
+} catch {
+  /* nije bitno */
+}
+
+function SizeControl() {
+  const [s, setS] = useSettings()
+  const size = s.uiSize || 17
+  useEffect(() => applySize(size), [size])
+  const change = (d: number) => setS((x) => ({ ...x, uiSize: Math.min(22, Math.max(13, (x.uiSize || 17) + d)) }))
+  return (
+    <div className="flex items-center gap-1 px-2.5 text-ink-soft">
+      <span className="text-xs mr-auto whitespace-nowrap">Slova</span>
+      <button onClick={() => change(-1)} className="w-7 h-7 rounded-md hover:bg-paper-sunk text-sm font-semibold" title="Manja slova">
+        A−
+      </button>
+      <span className="text-xs tabular w-6 text-center">{size}</span>
+      <button onClick={() => change(1)} className="w-7 h-7 rounded-md hover:bg-paper-sunk text-base font-semibold" title="Veća slova">
+        A+
+      </button>
+    </div>
+  )
+}
+
 function Shell() {
   const { route, param } = useRoute()
   const page = (() => {
@@ -159,6 +194,9 @@ function Shell() {
             </a>
           ))}
         </nav>
+        <div className="mt-auto pt-3">
+          <SizeControl />
+        </div>
       </aside>
 
       <main className="flex-1 min-w-0 md:h-screen md:overflow-y-auto md:flex md:flex-col">
@@ -181,7 +219,7 @@ function Shell() {
             <button
               key={n.route}
               onClick={() => go(n.route)}
-              className={cx('flex flex-col items-center gap-0.5 py-2 text-[11px]', route === n.route ? 'text-accent' : 'text-ink-faint')}
+              className={cx('flex flex-col items-center gap-0.5 py-2 text-xs', route === n.route ? 'text-accent' : 'text-ink-faint')}
             >
               {n.icon}
               {n.label}
@@ -189,7 +227,7 @@ function Shell() {
           ))}
           <button
             onClick={() => go('vise')}
-            className={cx('flex flex-col items-center gap-0.5 py-2 text-[11px]', moreActive ? 'text-accent' : 'text-ink-faint')}
+            className={cx('flex flex-col items-center gap-0.5 py-2 text-xs', moreActive ? 'text-accent' : 'text-ink-faint')}
           >
             <MoreHorizontal size={20} />
             Više

@@ -79,14 +79,14 @@ export default function Danas() {
               const p = goalProgress(g.data)
               return (
                 <div key={g.id} className="w-36">
-                  <div className="flex justify-between text-[11px] text-ink-soft">
+                  <div className="flex justify-between text-xs text-ink-soft">
                     <span className="truncate">{g.data.title}</span>
                     <span className="tabular shrink-0 ml-1">{Math.round(p.pct)}%</span>
                   </div>
                   <div className="h-1 rounded-full bg-paper-sunk overflow-hidden mt-0.5">
                     <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
                   </div>
-                  <div className="text-[11px] text-ink-faint tabular truncate mt-0.5">{p.text}</div>
+                  <div className="text-xs text-ink-faint tabular truncate mt-0.5">{p.text}</div>
                 </div>
               )
             })}
@@ -102,7 +102,7 @@ export default function Danas() {
         {/* Obaveze */}
         <Card className="flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
-            <h2 className="text-sm font-semibold">Obaveze za danas</h2>
+            <h2 className="text-base font-semibold">Obaveze za danas</h2>
             <div className="flex items-center gap-3 text-xs">
               <button onClick={() => setHideDone(!hideDone)} className="text-ink-soft hover:text-ink">
                 {hideDone ? 'Prikaži urađeno' : 'Sakrij urađeno'}
@@ -123,7 +123,7 @@ export default function Danas() {
         {/* Uskoro */}
         <Card className="flex flex-col min-h-0">
           <div className="px-4 pt-3 pb-1">
-            <h2 className="text-sm font-semibold">Uskoro</h2>
+            <h2 className="text-base font-semibold">Uskoro</h2>
           </div>
           <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
             {upcoming.length === 0 && !nextPeriod ? (
@@ -136,8 +136,8 @@ export default function Danas() {
                     <li key={u.id} className="flex items-center gap-2.5 py-2 cursor-pointer" onClick={() => go('dan', u.date)}>
                       <Dot color={u.color} size={8} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm leading-tight truncate">{u.title}</div>
-                        <div className="text-[11px] text-ink-faint truncate">
+                        <div className="text-base leading-tight truncate">{u.title}</div>
+                        <div className="text-xs text-ink-faint truncate">
                           {fmtShort(u.date)}
                           {u.sub && ` · ${u.sub}`}
                         </div>
@@ -152,8 +152,8 @@ export default function Danas() {
                   <li className="flex items-center gap-2.5 py-2">
                     <span className="w-2 h-2 rounded-full tint ring-1 ring-line" style={{ '--tint': nextPeriod.tint } as React.CSSProperties} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm leading-tight truncate">{nextPeriod.name}</div>
-                      <div className="text-[11px] text-ink-faint">
+                      <div className="text-base leading-tight truncate">{nextPeriod.name}</div>
+                      <div className="text-xs text-ink-faint">
                         {fmtShort(nextPeriod.from)} – {fmtShort(nextPeriod.to)}
                       </div>
                     </div>

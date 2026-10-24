@@ -161,7 +161,7 @@ function Plan({ date }: { date: string }) {
                     <div className="flex items-center gap-2">
                       <span className="font-medium truncate">{m.name}</span>
                       {m.slot && (
-                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper-sunk text-ink-soft shrink-0">
+                        <span className="text-[0.7rem] uppercase tracking-wide px-1.5 py-0.5 rounded bg-paper-sunk text-ink-soft shrink-0">
                           {m.slot === 'pre' ? 'pre treninga' : 'posle treninga'}
                         </span>
                       )}

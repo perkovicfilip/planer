@@ -110,7 +110,7 @@ function MiniMonth({ y, m, marks }: { y: number; m: number; marks: Map<string, D
       <div className="text-center text-sm font-semibold mb-0.5 capitalize">
         {MONTHS[m]} <span className="text-ink-faint font-normal">{y}</span>
       </div>
-      <div className="grid grid-cols-7 text-[11px] text-ink-faint text-center mb-0.5">
+      <div className="grid grid-cols-7 text-xs text-ink-faint text-center mb-0.5">
         {DAYS_MIN.map((d, i) => (
           <div key={i} className={cx(i >= 5 && 'weekend rounded-t')}>
             {d}
@@ -183,7 +183,7 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
                   return (
                     <div
                       key={e.id}
-                      className="text-[11px] leading-tight truncate rounded px-1 py-0.5 text-white"
+                      className="text-xs leading-tight truncate rounded px-1 py-0.5 text-white"
                       style={{ background: c?.color ?? '#64748b' }}
                     >
                       {e.data.start && <span className="opacity-80">{e.data.start} </span>}
@@ -191,7 +191,7 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
                     </div>
                   )
                 })}
-                {(mark?.events.length ?? 0) > 3 && <div className="text-[11px] text-ink-faint">+{mark!.events.length - 3} još</div>}
+                {(mark?.events.length ?? 0) > 3 && <div className="text-xs text-ink-faint">+{mark!.events.length - 3} još</div>}
               </div>
             </div>
           )
@@ -341,7 +341,7 @@ export default function Kalendar({ param }: { param?: string }) {
 
 function LegendRow({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color?: string }) {
   return (
-    <button onClick={onClick} className={cx('w-full flex items-center gap-2 px-1.5 py-0.5 rounded-md text-[13px] text-left', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
+    <button onClick={onClick} className={cx('w-full flex items-center gap-2 px-1.5 py-0.5 rounded-md text-sm text-left', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
       {color && <Dot color={color} />}
       <span className="truncate">{label}</span>
     </button>

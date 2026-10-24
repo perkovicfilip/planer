@@ -17,7 +17,7 @@ export function Card({ children, className, onClick }: { children: ReactNode; cl
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-1.5">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{children}</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">{children}</h2>
       {action}
     </div>
   )

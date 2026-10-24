@@ -209,7 +209,7 @@ export default function Dan({ param }: { param?: string }) {
                   style={{ top: i * PX, height: PX }}
                   onClick={() => setEditor({ start: `${String(h).padStart(2, '0')}:00` })}
                 >
-                  <span className="absolute left-2 -top-[1px] text-[11px] text-ink-faint tabular bg-paper-raised pr-1">
+                  <span className="absolute left-2 -top-[1px] text-xs text-ink-faint tabular bg-paper-raised pr-1">
                     {String(h).padStart(2, '0')}:00
                   </span>
                 </div>

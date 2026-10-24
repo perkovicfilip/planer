@@ -70,7 +70,7 @@ function NoteRow({ id, data, at }: { id: string; data: NoteData; at: string }) {
       <CheckCircle done={data.done} color="#64748b" size={22} onClick={() => store.update<NoteData>(id, (d) => ({ ...d, done: !d.done }))} />
       <div className={cx('flex-1 min-w-0', data.done && 'opacity-50 line-through')}>
         <div className="text-sm whitespace-pre-wrap break-words">{data.text}</div>
-        <div className="text-[11px] text-ink-faint mt-0.5">{fmtShort(iso(new Date(at)))}</div>
+        <div className="text-xs text-ink-faint mt-0.5">{fmtShort(iso(new Date(at)))}</div>
       </div>
       <IconButton title="Obriši" onClick={() => store.remove(id)}>
         <Trash2 size={14} />

@@ -52,10 +52,8 @@ body,
   height: 100%;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 14px;
-  }
+html {
+  font-size: var(--ui-size, 17px);
 }
 
 body {

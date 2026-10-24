@@ -196,6 +196,7 @@ export interface SettingsData {
   baseAverage: number | null
   totalEspb: number
   balanceStart: number // stanje novca pre početka vođenja finansija
+  uiSize: number // veličina slova u px (14–20)
   bedtime?: string // podsetnik za spavanje
   wakeTime?: string
   notifyObligations: boolean
@@ -214,6 +215,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   baseAverage: null,
   totalEspb: 240,
   balanceStart: 0,
+  uiSize: 17,
   bedtime: '21:30',
   wakeTime: '05:50',
   notifyObligations: true,

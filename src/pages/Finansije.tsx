@@ -98,7 +98,7 @@ function Overview() {
           <Mini label="Razlika" value={fmtDin(income - expense, true)} cls={income - expense >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
           <Mini label="Stanje" value={fmtDin(balance())} />
           {!settings.balanceStart && (
-            <a href="#/podesavanja" className="text-[11px] text-accent">
+            <a href="#/podesavanja" className="text-xs text-accent">
               upiši početno stanje
             </a>
           )}
@@ -110,7 +110,7 @@ function Overview() {
           ) : (
             [...groups.entries()].map(([date, list]) => (
               <div key={date} className="py-1.5">
-                <div className="text-[11px] text-ink-faint">{relDay(date)}</div>
+                <div className="text-xs text-ink-faint">{relDay(date)}</div>
                 <ul className="divide-y divide-line">
                   {list.map((t) => {
                     const c = t.data.categoryId ? catMap.get(t.data.categoryId) : undefined
@@ -156,7 +156,7 @@ function Overview() {
 function Mini({ label, value, cls }: { label: string; value: string; cls?: string }) {
   return (
     <div className="leading-tight">
-      <div className="text-[11px] text-ink-faint">{label}</div>
+      <div className="text-xs text-ink-faint">{label}</div>
       <div className={cx('text-sm font-semibold tabular', cls)}>{value}</div>
     </div>
   )
@@ -168,7 +168,7 @@ function Stat({ label, value, cls, sub }: { label: string; value: string; cls?: 
       <div className="text-xs text-ink-faint">{label}</div>
       <div className={cx('text-lg md:text-xl font-semibold tabular mt-0.5', cls)}>{value}</div>
       {sub && (
-        <a href="#/podesavanja" className="text-[11px] text-accent">
+        <a href="#/podesavanja" className="text-xs text-accent">
           {sub}
         </a>
       )}
@@ -229,7 +229,7 @@ function MonthBars({ series, active, onPick }: { series: { mk: string; inc: numb
           </button>
         ))}
       </div>
-      <div className="flex gap-4 text-[11px] text-ink-soft mt-1">
+      <div className="flex gap-4 text-xs text-ink-soft mt-1">
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Zarađeno
         </span>

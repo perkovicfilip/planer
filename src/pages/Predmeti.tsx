@@ -67,7 +67,7 @@ export default function Predmeti() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint border-b border-line">
+                <tr className="text-left text-xs uppercase tracking-wider text-ink-faint border-b border-line">
                   <th className="font-semibold px-3 py-2">Predmet</th>
                   <th className="font-semibold px-2 py-2 text-right">ESPB</th>
                   <th className="font-semibold px-2 py-2 text-center">God.</th>

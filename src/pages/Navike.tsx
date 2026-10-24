@@ -52,7 +52,7 @@ export default function Navike() {
                   <div className="text-lg font-semibold tabular leading-none" style={{ color: h.data.color }}>
                     {s}
                   </div>
-                  <div className="text-[11px] text-ink-faint">niz · rekord {best}</div>
+                  <div className="text-xs text-ink-faint">niz · rekord {best}</div>
                 </div>
                 <IconButton title="Izmeni" onClick={() => setEdit(h.id)}>
                   <Pencil size={15} />
@@ -60,7 +60,7 @@ export default function Navike() {
               </div>
               {/* Mreža poslednjih nedelja: klik na dan = štikliraj unazad */}
               <div className="mt-4 flex gap-1 overflow-x-auto scrollbar-none">
-                <div className="grid grid-rows-7 gap-1 text-[9px] text-ink-faint pr-1">
+                <div className="grid grid-rows-7 gap-1 text-[0.65rem] text-ink-faint pr-1">
                   {DAYS_MIN.map((d, i) => (
                     <span key={i} className="h-3.5 leading-[14px]">
                       {i % 2 === 0 ? d : ''}
