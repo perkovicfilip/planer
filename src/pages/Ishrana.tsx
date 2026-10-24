@@ -636,11 +636,9 @@ function FoodLibrary() {
 function Weight() {
   const weights = useKind<WeightData>('weight').sort((a, b) => a.data.date.localeCompare(b.data.date))
   const goals = useKind<GoalData>('goal')
-  const [settings, setSettings] = useSettings()
+  const [settings] = useSettings()
   const [kg, setKg] = useState('')
   const [date, setDate] = useState(today())
-  const [tKg, setTKg] = useState('')
-  const [tDate, setTDate] = useState(addDays(settings.bulkStart || today(), 180))
   const save = () => {
     const v = Number(kg.replace(',', '.'))
     if (!v) return
@@ -656,18 +654,10 @@ function Weight() {
   const target = kgGoal?.data.target ?? null
   const left = target !== null && last ? +(target - last.data.kg).toFixed(1) : null
 
-  const setGoal = () => {
-    const v = Number(tKg.replace(',', '.'))
-    if (!v) return
-    if (kgGoal) store.update<GoalData>(kgGoal.id, (d) => ({ ...d, target: v, deadline: tDate }))
-    else store.put<GoalData>('goal', { title: 'Kilaža', type: 'kg', target: v, deadline: tDate, order: goals.length + 1, color: '#16a34a' })
-    setTKg('')
-  }
-
   return (
     <div className="lg:grid lg:grid-cols-[1fr_280px] gap-4 md:flex-1 md:min-h-0">
       <Card className="p-3 mb-4 lg:mb-0 flex flex-col min-h-[360px]">
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-2">
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-1 text-base mb-2">
           <span>
             <span className="text-ink-faint">Početak </span>
             <b className="text-[#2563eb]">{start ? `${start.kg} kg` : '—'}</b>
@@ -716,25 +706,6 @@ function Weight() {
           <Button variant="primary" className="w-full mt-2" onClick={save}>
             Upiši kg
           </Button>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs font-semibold mb-1.5">Cilj i početak</div>
-          <div className="flex flex-col gap-2">
-            <input inputMode="decimal" className="w-full" placeholder={target !== null ? `cilj ${target} kg` : 'cilj kg'} value={tKg} onChange={(e) => setTKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setGoal()} />
-            <input type="date" className="w-full" value={kgGoal?.data.deadline && !tKg ? kgGoal.data.deadline : tDate} onChange={(e) => setTDate(e.target.value)} />
-          </div>
-          <Button className="w-full mt-2" onClick={setGoal} disabled={!tKg.trim()}>
-            {kgGoal ? 'Promeni cilj' : 'Postavi cilj'}
-          </Button>
-          <label className="flex items-center justify-between gap-2 text-xs text-ink-soft mt-2">
-            Početak bulka
-            <input
-              type="date"
-              className="text-xs py-1"
-              value={startDate}
-              onChange={(e) => e.target.value && setSettings((x) => ({ ...x, bulkStart: e.target.value }))}
-            />
-          </label>
         </Card>
         <Card className="px-3 py-1 min-h-0 flex-1 overflow-y-auto">
           <ul className="divide-y divide-line">

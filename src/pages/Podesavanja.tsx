@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import { Download, Upload, LogOut, Plus, Pencil } from 'lucide-react'
 import { store, useKind } from '../lib/store'
 import { supabase, LOCAL_MODE } from '../lib/supabase'
-import type { Category, CategoryGroup, Kind } from '../lib/types'
+import type { Category, CategoryGroup, GoalData, Kind } from '../lib/types'
 import { useSettings, learnedGap } from '../lib/logic'
-import { iso } from '../lib/dates'
+import { addDays, iso } from '../lib/dates'
 import { isNative, requestNotificationPermission, rescheduleNow } from '../native/bridge'
 import { Button, Card, ColorPicker, Field, IconButton, Modal, PageHeader, SectionTitle } from '../ui/kit'
 
@@ -20,6 +20,8 @@ const KINDS: Kind[] = ['category', 'event', 'subject', 'habit', 'food', 'mealday
 
 export default function Podesavanja() {
   const [s, setS] = useSettings()
+  const goals = useKind<GoalData>('goal')
+  const kgGoal = goals.find((g) => g.data.type === 'kg')
   const cats = useKind<Category>('category').sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.order - b.data.order)
   const [catEdit, setCatEdit] = useState<{ id?: string; data: Category } | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -94,8 +96,31 @@ export default function Podesavanja() {
           <Field label="Podsetnik ako kasnim (min)" hint="Može i posebno za svaki obrok.">
             <input type="number" className="w-full" value={s.remindDelay} onChange={num('remindDelay')} />
           </Field>
-          <Field label="Obrok pre treninga — koliko ranije (min)">
-            <input type="number" className="w-full" value={s.preMealBefore} onChange={num('preMealBefore')} />
+          <Field label="Početak bulka (datum)" hint="Prva kilaža od tog dana je „Početak“ na grafiku.">
+            <input type="date" className="w-full" value={s.bulkStart} onChange={(e) => e.target.value && setS((d) => ({ ...d, bulkStart: e.target.value }))} />
+          </Field>
+          <Field label="Ciljna kilaža (kg)">
+            <input
+              type="number"
+              step="0.5"
+              className="w-full"
+              value={kgGoal?.data.target ?? ''}
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                if (!v) return
+                if (kgGoal) store.update<GoalData>(kgGoal.id, (d) => ({ ...d, target: v }))
+                else store.put<GoalData>('goal', { title: 'Kilaža', type: 'kg', target: v, deadline: addDays(s.bulkStart || iso(), 180), order: goals.length + 1, color: '#16a34a' })
+              }}
+            />
+          </Field>
+          <Field label="Cilj do (datum)">
+            <input
+              type="date"
+              className="w-full"
+              disabled={!kgGoal}
+              value={kgGoal?.data.deadline ?? ''}
+              onChange={(e) => kgGoal && e.target.value && store.update<GoalData>(kgGoal.id, (d) => ({ ...d, deadline: e.target.value }))}
+            />
           </Field>
         </div>
       </Card>

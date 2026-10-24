@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { daysBetween, fmtShort, addDays, parse } from '../lib/dates'
+void fmtShort
 import type { WeightData } from '../lib/types'
 
 function useSize<T extends HTMLElement>() {
@@ -40,7 +41,7 @@ export function WeightChart({
   targetDate: string | null
 }) {
   const [ref, { w: W, h: H }] = useSize<HTMLDivElement>()
-  const pad = { l: 44, r: 70, t: 20, b: 28 }
+  const pad = { l: 44, r: 40, t: 34, b: 28 }
 
   // vremenska osa
   const dates = weights.map((x) => x.date)
@@ -85,8 +86,8 @@ export function WeightChart({
   const last = sorted[sorted.length - 1]
 
   return (
-    <div ref={ref} className="w-full h-full min-h-[220px]">
-      <svg width={W} height={H} className="block">
+    <div ref={ref} className="relative w-full h-full min-h-[220px] overflow-hidden">
+      <svg width={W} height={H} className="absolute inset-0 block">
         {/* mreža */}
         {yTicks.map((v) => (
           <g key={v}>
@@ -105,45 +106,18 @@ export function WeightChart({
           </g>
         ))}
 
-        {/* idealna putanja */}
-        {startKg !== null && targetKg !== null && targetDate && (
-          <line
-            x1={sx(startDate)}
-            y1={sy(startKg)}
-            x2={sx(targetDate)}
-            y2={sy(targetKg)}
-            stroke="#16a34a"
-            strokeWidth={2}
-            strokeDasharray="6 6"
-            strokeOpacity={0.6}
-          />
-        )}
-
-        {/* ciljna kilaža: horizontalna linija + meta */}
-        {targetKg !== null && (
+        {/* ciljna kilaža: samo zelena tačka */}
+        {targetKg !== null && targetDate && (
           <g>
-            <line x1={pad.l} x2={W - pad.r} y1={sy(targetKg)} y2={sy(targetKg)} stroke="#16a34a" strokeOpacity={0.35} />
-            <text x={W - pad.r + 6} y={sy(targetKg) + 4} fontSize={12} fontWeight={600} fill="#16a34a">
-              Cilj {targetKg} kg
+            <circle cx={sx(targetDate)} cy={sy(targetKg)} r={8} fill="#16a34a" stroke="rgb(var(--paper-raised))" strokeWidth={2.5} />
+            <text x={sx(targetDate)} y={sy(targetKg) - 14} textAnchor="middle" fontSize={13} fontWeight={700} fill="#16a34a">
+              {targetKg} kg
             </text>
-            {targetDate && (
-              <g>
-                <circle cx={sx(targetDate)} cy={sy(targetKg)} r={9} fill="none" stroke="#16a34a" strokeWidth={2} />
-                <circle cx={sx(targetDate)} cy={sy(targetKg)} r={3.5} fill="#16a34a" />
-              </g>
-            )}
           </g>
         )}
 
-        {/* početak */}
-        <g>
-          <line x1={sx(startDate)} x2={sx(startDate)} y1={pad.t} y2={H - pad.b} stroke="#2563eb" strokeOpacity={0.5} strokeWidth={1.5} />
-          <text x={sx(startDate) + 5} y={pad.t + 10} fontSize={12} fontWeight={600} fill="#2563eb">
-            Početak {fmtShort(startDate)}
-            {startKg !== null ? ` · ${startKg} kg` : ''}
-          </text>
-          {startKg !== null && <circle cx={sx(startDate)} cy={sy(startKg)} r={6} fill="#2563eb" stroke="rgb(var(--paper-raised))" strokeWidth={2} />}
-        </g>
+        {/* početak: samo tačka */}
+        {startKg !== null && <circle cx={sx(startDate)} cy={sy(startKg)} r={6} fill="#2563eb" stroke="rgb(var(--paper-raised))" strokeWidth={2} />}
 
         {/* merenja */}
         {sorted.length > 0 && <path d={path} fill="none" stroke="rgb(var(--ink))" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
