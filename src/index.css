@@ -17,7 +17,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --ink: 236 234 230;
     --ink-soft: 184 180 173;
     --ink-faint: 125 121 115;
@@ -30,6 +30,20 @@
     --weekend: 38 36 34;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+    --ink: 236 234 230;
+    --ink-soft: 184 180 173;
+    --ink-faint: 125 121 115;
+    --paper: 20 19 18;
+    --paper-raised: 31 30 28;
+    --paper-sunk: 14 13 12;
+    --line: 52 50 47;
+    --accent: 96 165 250;
+    --accent-soft: 30 45 75;
+    --weekend: 38 36 34;
+    color-scheme: dark;
 }
 
 html,
@@ -52,9 +66,12 @@ body {
   background: rgb(var(--weekend));
 }
 @media (prefers-color-scheme: dark) {
-  .tint {
+  :root:not([data-theme='light']) .tint {
     background: color-mix(in srgb, var(--tint) 16%, rgb(var(--paper)));
   }
+}
+:root[data-theme='dark'] .tint {
+  background: color-mix(in srgb, var(--tint) 16%, rgb(var(--paper)));
 }
 
 .tabular {

@@ -17,7 +17,7 @@ import {
   RefreshCw,
   Cloud,
 } from 'lucide-react'
-import { supabase, LOCAL_MODE } from './lib/supabase'
+import { supabase, LOCAL_MODE, DEMO } from './lib/supabase'
 import { store, useSyncStatus } from './lib/store'
 import { useRoute, go, type Route } from './lib/router'
 import { ensureDefaults } from './data/defaults'
@@ -45,7 +45,12 @@ export default function App() {
 
   useEffect(() => {
     if (LOCAL_MODE) {
-      store.start(null).then(() => {
+      store.start(null).then(async () => {
+        if (DEMO) {
+          const mods = import.meta.glob('./demo/load.ts')
+          const loader = Object.values(mods)[0]
+          if (loader) ((await loader()) as { loadDemo: () => void }).loadDemo()
+        }
         ensureDefaults()
         setReady(true)
       })
@@ -155,6 +160,11 @@ function Shell() {
           <span className="text-sm font-semibold text-ink-soft">Planer</span>
           <SyncBadge />
         </div>
+        {DEMO && (
+          <div className="mx-4 md:mx-8 mt-3 md:mt-6 rounded-xl bg-accent-soft text-ink px-4 py-2.5 text-sm">
+            Probna verzija sa primerima — sve što menjaš čuva se samo u ovom browseru.
+          </div>
+        )}
         <div className="max-w-5xl mx-auto px-4 md:px-8 pt-3 md:pt-8 pb-28 md:pb-12">{page}</div>
       </main>
 

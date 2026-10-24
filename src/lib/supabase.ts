@@ -10,5 +10,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 })
 
 // Lokalni režim (bez naloga) — za testiranje: dodaj ?lokalno=1 u adresu.
+export const DEMO = import.meta.env.VITE_DEMO === '1'
 export const LOCAL_MODE =
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('lokalno')
+  DEMO || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('lokalno'))
