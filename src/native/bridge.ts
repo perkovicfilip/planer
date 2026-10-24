@@ -16,7 +16,7 @@ import {
   mealDayFor,
   mealRemindAt,
   obligationsFor,
-  setMealEaten,
+  markMealEaten,
   type Obligation,
 } from '../lib/logic'
 import type { EventData, HabitData } from '../lib/types'
@@ -75,7 +75,7 @@ function applyDone(key: string, at: number) {
     const o = obligationsFor(date).find((x) => x.key === key)
     if (!o) continue
     if (o.done) return
-    if (o.kind === 'meal') setMealEaten(date, key.slice(3), new Date(at || Date.now()).toISOString())
+    if (o.kind === 'meal') markMealEaten(date, key.slice(3), at || Date.now())
     else o.toggle()
     return
   }

@@ -3,7 +3,6 @@ import { BookOpen, CalendarCheck, Dumbbell, Flame, Utensils } from 'lucide-react
 import { useVersion } from '../lib/store'
 import { obligationsFor, setMealEaten, type Obligation } from '../lib/logic'
 import { CheckCircle, Empty, cx } from './kit'
-import { EatenPicker } from './EatenPicker'
 
 const KIND_ICON: Record<Obligation['kind'], React.ReactNode> = {
   event: <CalendarCheck size={13} />,
@@ -15,7 +14,6 @@ const KIND_ICON: Record<Obligation['kind'], React.ReactNode> = {
 
 export function ObligationList({ date, hideDone = false, kinds }: { date: string; hideDone?: boolean; kinds?: Obligation['kind'][] }) {
   useVersion()
-  const [mealPick, setMealPick] = useState<{ id: string; name: string } | null>(null)
   let list = obligationsFor(date)
   if (kinds) list = list.filter((o) => kinds.includes(o.kind))
   const done = list.filter((o) => o.done).length
@@ -37,10 +35,7 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
             <CheckCircle
               done={o.done}
               color={o.color}
-              onClick={() => {
-                if (o.kind === 'meal' && !o.done) setMealPick({ id: o.key.slice(3), name: o.title })
-                else o.toggle()
-              }}
+              onClick={() => o.toggle()}
             />
             <div className={cx('flex-1 min-w-0', o.done && 'opacity-45')}>
               <div className={cx('text-base leading-snug truncate', o.done && 'line-through')}>{o.title}</div>
@@ -54,16 +49,6 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
         ))}
       </ul>
       {hideDone && done > 0 && <div className="text-xs text-ink-faint mt-2">{done} urađeno je sklonjeno sa liste.</div>}
-      <EatenPicker
-        open={!!mealPick}
-        date={date}
-        name={mealPick?.name ?? ''}
-        onClose={() => setMealPick(null)}
-        onPick={(t) => {
-          if (mealPick) setMealEaten(date, mealPick.id, t)
-          setMealPick(null)
-        }}
-      />
     </div>
   )
 }

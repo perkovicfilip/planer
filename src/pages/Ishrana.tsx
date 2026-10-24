@@ -12,13 +12,13 @@ import {
   mealRemindAt,
   planFor,
   setMealEaten,
+  markMealEaten,
   totals,
   useSettings,
   useWeekPlan,
 } from '../lib/logic'
 import { go } from '../lib/router'
 import { Button, Card, CheckCircle, Empty, Field, IconButton, LineChart, Modal, PageHeader, Progress, SectionTitle, Segmented, cx } from '../ui/kit'
-import { EatenPicker } from '../ui/EatenPicker'
 import { WeightChart } from '../ui/WeightChart'
 import { bulkStartWeight } from '../lib/goals'
 
@@ -65,7 +65,6 @@ function Plan({ date }: { date: string }) {
   const gap = learnedGap(settings)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Meal | null>(null)
-  const [pick, setPick] = useState<Meal | null>(null)
   const [history, setHistory] = useState(false)
 
   const updateMeals = (fn: (m: Meal[]) => Meal[]) => {
@@ -150,8 +149,8 @@ function Plan({ date }: { date: string }) {
                 key={m.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => (eatenNow ? setMealEaten(date, m.id, null) : setPick(m))}
-                onKeyDown={(e) => e.key === 'Enter' && (eatenNow ? setMealEaten(date, m.id, null) : setPick(m))}
+                onClick={() => (eatenNow ? setMealEaten(date, m.id, null) : markMealEaten(date, m.id))}
+                onKeyDown={(e) => e.key === 'Enter' && (eatenNow ? setMealEaten(date, m.id, null) : markMealEaten(date, m.id))}
                 className={cx(
                   'meal-card group relative rounded-xl border-2 px-4 py-3 cursor-pointer transition select-none',
                   eatenNow ? 'meal-done' : 'meal-todo',
@@ -234,16 +233,6 @@ function Plan({ date }: { date: string }) {
         onSave={(m) => updateMeals((all) => all.map((x) => (x.id === m.id ? m : x)))}
         onDelete={(id) => updateMeals((all) => all.filter((x) => x.id !== id))}
         defaultDelay={settings.remindDelay}
-      />
-      <EatenPicker
-        open={!!pick}
-        date={date}
-        name={pick?.name ?? ''}
-        onClose={() => setPick(null)}
-        onPick={(t) => {
-          if (pick) setMealEaten(date, pick.id, t)
-          setPick(null)
-        }}
       />
     </div>
   )

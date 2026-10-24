@@ -366,7 +366,7 @@ export function obligationsFor(date: string): Obligation[] {
         color: '#f59e0b',
         kind: 'meal',
         done: !!m.eatenAt,
-        toggle: () => setMealEaten(date, m.id, m.eatenAt ? null : new Date().toISOString()),
+        toggle: () => (m.eatenAt ? setMealEaten(date, m.id, null) : markMealEaten(date, m.id)),
         sub: `${m.kcal} kcal · ${m.protein} g`,
       })
     })
@@ -397,4 +397,20 @@ export function setMealEaten(date: string, mealId: string, eatenAt: string | nul
     ...d,
     meals: d.meals.map((m) => (m.id === mealId ? { ...m, eatenAt: eatenAt ?? undefined } : m)),
   }))
+}
+
+/** Vreme obroka: 10 minuta pre trenutka kad je štikliran. */
+export function eatenTimeFrom(clickedAt: number = Date.now()): string {
+  return new Date(clickedAt - 10 * 60000).toISOString()
+}
+
+export function markMealEaten(date: string, mealId: string, clickedAt?: number) {
+  let t = eatenTimeFrom(clickedAt)
+  if (iso(new Date(t)) !== date) {
+    // upisuješ za neki drugi dan — zadrži taj datum, a vreme uzmi sa sata
+    const d = new Date(t)
+    const [y, m, dd] = date.split('-').map(Number)
+    t = new Date(y, m - 1, dd, d.getHours(), d.getMinutes()).toISOString()
+  }
+  setMealEaten(date, mealId, t)
 }
