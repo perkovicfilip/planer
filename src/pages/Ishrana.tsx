@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Copy, Plus, Star, Trash2, ArrowUp, ArrowDown, Pencil, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, History, Plus, Star, Trash2, ArrowUp, ArrowDown, Pencil, Search } from 'lucide-react'
 import { store, uid, useKind, useVersion } from '../lib/store'
 import type { FoodData, GoalData, Meal, MealDayData, MealSlot, WeightData } from '../lib/types'
-import { addDays, fmtShort, relDay, timeOf, today, fromMin } from '../lib/dates'
+import { addDays, fmtLong, fmtShort, relDay, timeOf, today, fromMin } from '../lib/dates'
 import {
   ensureMealDay,
   expectedTimes,
@@ -66,7 +66,7 @@ function Plan({ date }: { date: string }) {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Meal | null>(null)
   const [pick, setPick] = useState<Meal | null>(null)
-  const [copyOpen, setCopyOpen] = useState(false)
+  const [history, setHistory] = useState(false)
 
   const updateMeals = (fn: (m: Meal[]) => Meal[]) => {
     const id = ensureMealDay(date)
@@ -85,14 +85,15 @@ function Plan({ date }: { date: string }) {
   const missingProt = settings.proteinGoal - planned.protein
 
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
+      <div className="md:flex-1 md:min-h-0 md:overflow-y-auto">
       <div className="flex items-center gap-1 mb-4">
         <IconButton title="Prethodni dan" onClick={() => go('ishrana', addDays(date, -1))}>
           <ChevronLeft size={18} />
         </IconButton>
         <div className="text-center min-w-[120px]">
           <div className="font-semibold">{relDay(date)}</div>
-          <div className="text-xs text-ink-faint">{fmtShort(date)}</div>
+          <div className="text-xs text-ink-faint">{fmtLong(date)}</div>
         </div>
         <IconButton title="Sledeći dan" onClick={() => go('ishrana', addDays(date, 1))}>
           <ChevronRight size={18} />
@@ -102,6 +103,9 @@ function Plan({ date }: { date: string }) {
             Danas
           </Button>
         )}
+        <Button className="ml-auto" onClick={() => setHistory(true)}>
+          <History size={15} /> Istorija ishrane
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3 mb-5">
@@ -218,6 +222,10 @@ function Plan({ date }: { date: string }) {
       {meals.length > 0 && (missingKcal > 0 || missingProt > 0) && (
         <Suggestions kcal={missingKcal} protein={missingProt} planned={meals} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
       )}
+      </div>
+
+      <DayStrip selected={date} />
+      <HistoryModal open={history} onClose={() => setHistory(false)} />
 
       <AddMeal open={adding} planned={meals} onClose={() => setAdding(false)} onAdd={(f) => addFood(date, f, meals, day.activity !== 'odmor')} />
       <MealEditor
@@ -731,4 +739,133 @@ export function goalColor(ratio: number): string {
   if (r >= 1) return 'hsl(135 65% 40%)' // cilj ispunjen — zelena
   const hue = Math.round(48 * Math.pow(r, 1.4)) // crvena → narandžasta → žuta
   return `hsl(${hue} 80% 50%)`
+}
+
+// ---------------- Traka dana (cilj ispunjen ili ne) ----------------
+
+function dayStatus(date: string, kcalGoal: number, proteinGoal: number) {
+  const md = mealDayFor(date)
+  const t = totals(md?.data.meals ?? [])
+  const ok = t.kcal >= kcalGoal && t.protein >= proteinGoal
+  return { t, ok, has: !!md && md.data.meals.length > 0 }
+}
+
+function DayStrip({ selected }: { selected: string }) {
+  useVersion()
+  const [settings] = useSettings()
+  const DAYS = 60
+  const end = today()
+  const start = addDays(end, -(DAYS - 1))
+  const firstData = store
+    .list<MealDayData>('mealday')
+    .filter((m) => m.data.meals.length > 0)
+    .map((m) => m.data.date)
+    .sort()[0]
+  const trackFrom = [firstData, settings.bulkStart].filter(Boolean).sort()[0] ?? end
+  const days = Array.from({ length: DAYS }, (_, i) => addDays(start, i))
+  let streakN = 0
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i]
+    const st = dayStatus(d, settings.kcalGoal, settings.proteinGoal)
+    if (d === end && !st.ok) continue // današnji dan još traje
+    if (st.ok) streakN++
+    else break
+  }
+  const tracked = days.filter((d) => d >= trackFrom && d < end)
+  const okCount = tracked.filter((d) => dayStatus(d, settings.kcalGoal, settings.proteinGoal).ok).length
+  return (
+    <div className="mt-3 pt-3 border-t border-line">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1.5 text-sm">
+        <span className="font-semibold">Poslednjih {DAYS} dana</span>
+        <span className="text-ink-soft">
+          Cilj ispunjen <b className="text-emerald-600">{okCount}</b> od {tracked.length} dana · niz <b>{streakN}</b>
+        </span>
+      </div>
+      <div className="flex h-8 rounded-lg overflow-hidden border border-line">
+        {days.map((d) => {
+          const st = dayStatus(d, settings.kcalGoal, settings.proteinGoal)
+          const before = d < trackFrom
+          const isToday = d === end
+          const bg = before ? 'rgb(var(--paper-sunk))' : st.ok ? '#16a34a' : isToday ? 'rgb(var(--paper-sunk))' : '#e11d48'
+          return (
+            <button
+              key={d}
+              onClick={() => go('ishrana', d)}
+              title={`${fmtShort(d)}: ${st.t.kcal} kcal · ${st.t.protein} g${st.ok ? ' ✓' : ''}`}
+              className={cx('flex-1 border-r border-black/10 last:border-r-0 hover:opacity-80 transition', d === selected && 'ring-2 ring-inset ring-ink')}
+              style={{ background: bg }}
+            />
+          )
+        })}
+      </div>
+      <div className="flex justify-between text-xs text-ink-faint mt-1">
+        <span>{fmtShort(start)}</span>
+        <span className="flex gap-3">
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#16a34a]" /> ispunjeno
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#e11d48]" /> nije
+          </span>
+        </span>
+        <span>danas</span>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Istorija ishrane ----------------
+
+function HistoryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const days = useKind<MealDayData>('mealday')
+    .filter((m) => m.data.meals.length > 0)
+    .sort((a, b) => b.data.date.localeCompare(a.data.date))
+  const [settings] = useSettings()
+  return (
+    <Modal open={open} onClose={onClose} wide title="Istorija ishrane">
+      {days.length === 0 ? (
+        <Empty>Još nema upisanih dana.</Empty>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {days.map((md) => {
+            const t = totals(md.data.meals)
+            const ok = t.kcal >= settings.kcalGoal && t.protein >= settings.proteinGoal
+            return (
+              <div key={md.id} className={cx('rounded-xl border-2 p-3', ok ? 'meal-done' : md.data.date === today() ? 'border-line' : 'meal-todo')}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <button
+                    className="font-semibold hover:underline text-left"
+                    onClick={() => {
+                      onClose()
+                      go('ishrana', md.data.date)
+                    }}
+                  >
+                    {fmtLong(md.data.date)}
+                  </button>
+                  <span className="text-xs">{ok ? '✓ cilj' : ''}</span>
+                </div>
+                <div className="text-sm tabular mt-0.5">
+                  <b>{t.kcal}</b> kcal · <b>{t.protein}</b> g
+                  <span className="text-ink-faint"> / {settings.kcalGoal} · {settings.proteinGoal} g</span>
+                </div>
+                <ul className="mt-2 space-y-0.5 text-sm">
+                  {md.data.meals.map((m, i) => (
+                    <li key={m.id} className={cx('flex justify-between gap-2', !m.eatenAt && 'line-through opacity-50')}>
+                      <span className="truncate">
+                        {i + 1}. {m.name}
+                      </span>
+                      <span className="tabular text-ink-soft shrink-0">
+                        {m.eatenAt ? timeOf(m.eatenAt) + ' · ' : ''}
+                        {m.kcal} kcal
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Modal>
+  )
 }

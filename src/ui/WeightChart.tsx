@@ -106,6 +106,20 @@ export function WeightChart({
           </g>
         ))}
 
+        {/* od poslednje kilaže do cilja */}
+        {targetKg !== null && targetDate && sorted.length > 0 && (
+          <line
+            x1={sx(sorted[sorted.length - 1].date)}
+            y1={sy(sorted[sorted.length - 1].kg)}
+            x2={sx(targetDate)}
+            y2={sy(targetKg)}
+            stroke="#16a34a"
+            strokeWidth={2}
+            strokeDasharray="6 6"
+            strokeOpacity={0.7}
+          />
+        )}
+
         {/* ciljna kilaža: samo zelena tačka */}
         {targetKg !== null && targetDate && (
           <g>
