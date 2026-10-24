@@ -6,6 +6,7 @@ import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/d
 import { expectedTimes, fmtTime, mealDayFor, occursOn, streak, totals, useSettings, useWeekPlan } from '../lib/logic'
 import { goalProgress } from '../lib/goals'
 import { PERIODS } from '../data/ftn'
+import { fmtDin, monthTotals } from '../lib/finance'
 import { go } from '../lib/router'
 import { Button, Card, Dot, Progress, SectionTitle, cx } from '../ui/kit'
 import { ObligationList } from '../ui/ObligationList'
@@ -33,6 +34,7 @@ export default function Danas() {
   const [note, setNote] = useState('')
 
   const md = mealDayFor(date)
+  const money = monthTotals(date.slice(0, 7))
   const meals = md?.data.meals ?? []
   const t = totals(meals)
   const exp = expectedTimes(date, meals, settings, plan)
@@ -152,6 +154,21 @@ export default function Danas() {
                   : nextIdx === -1
                     ? 'Svi obroci za danas su pojedeni.'
                     : `Sledeći: ${meals[nextIdx].name} oko ${fmtTime(exp[nextIdx])}`}
+              </div>
+            </Card>
+          </section>
+
+          {/* Novac */}
+          <section>
+            <SectionTitle action={<a href="#/finansije" className="text-xs text-accent">Upiši</a>}>Novac ovog meseca</SectionTitle>
+            <Card className="p-4 grid grid-cols-2 gap-3 cursor-pointer" onClick={() => go('finansije')}>
+              <div>
+                <div className="text-xs text-ink-faint">Zarađeno</div>
+                <div className="text-lg font-semibold tabular text-emerald-600">{fmtDin(money.income)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-ink-faint">Potrošeno</div>
+                <div className="text-lg font-semibold tabular text-rose-600">{fmtDin(money.expense)}</div>
               </div>
             </Card>
           </section>

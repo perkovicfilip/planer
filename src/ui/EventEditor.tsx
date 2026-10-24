@@ -189,8 +189,9 @@ export function EventEditor({
           onChange={(v) => set('repeat', v)}
           options={[
             { value: 'none', label: 'Nikad' },
-            { value: 'daily', label: 'Svaki dan' },
-            { value: 'weekly', label: 'Svake nedelje' },
+            { value: 'daily', label: 'Dnevno' },
+            { value: 'weekly', label: 'Nedeljno' },
+            { value: 'yearly', label: 'Godišnje' },
           ]}
         />
       </Field>

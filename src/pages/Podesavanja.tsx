@@ -16,7 +16,7 @@ const GROUPS: { v: CategoryGroup; label: string }[] = [
   { v: 'ostalo', label: 'Ostalo' },
 ]
 
-const KINDS: Kind[] = ['category', 'event', 'subject', 'habit', 'food', 'mealday', 'exercise', 'workout', 'workoutlog', 'weekplan', 'weight', 'goal', 'note', 'settings', 'meta']
+const KINDS: Kind[] = ['category', 'event', 'subject', 'habit', 'food', 'mealday', 'exercise', 'workout', 'workoutlog', 'weekplan', 'weight', 'goal', 'note', 'settings', 'meta', 'fincat', 'transaction', 'media', 'project']
 
 export default function Podesavanja() {
   const [s, setS] = useSettings()
@@ -91,6 +91,16 @@ export default function Podesavanja() {
             <input type="number" className="w-full" value={s.preMealBefore} onChange={num('preMealBefore')} />
           </Field>
         </div>
+      </Card>
+
+      <SectionTitle>Finansije</SectionTitle>
+      <Card className="p-4 mb-6">
+        <Field label="Početno stanje novca (din)" hint="Koliko imaš sad, pre nego što počneš da upisuješ. Na to se dodaju prihodi i oduzimaju troškovi.">
+          <input type="number" className="w-full" value={s.balanceStart || ''} onChange={num('balanceStart')} />
+        </Field>
+        <a href="#/finansije/kategorije" className="text-sm text-accent">
+          Kategorije prihoda i troškova →
+        </a>
       </Card>
 
       <SectionTitle>Fakultet</SectionTitle>

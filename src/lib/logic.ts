@@ -41,6 +41,7 @@ export function occursOn(e: EventData, date: string): boolean {
   if (e.repeatUntil && date > e.repeatUntil) return false
   if (e.repeat === 'daily') return true
   if (e.repeat === 'weekly') return weekday(date) === weekday(e.date)
+  if (e.repeat === 'yearly') return date.slice(5) === e.date.slice(5)
   return date <= (e.endDate || e.date)
 }
 

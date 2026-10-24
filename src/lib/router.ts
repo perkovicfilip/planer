@@ -13,6 +13,9 @@ export type Route =
   | 'beleske'
   | 'podesavanja'
   | 'vise'
+  | 'finansije'
+  | 'lista'
+  | 'projekti'
 
 function parseHash(): { route: Route; param?: string } {
   const h = window.location.hash.replace(/^#\/?/, '')

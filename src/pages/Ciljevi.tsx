@@ -3,6 +3,8 @@ import { Plus, Pencil } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
 import type { GoalData, GoalType } from '../lib/types'
 import { goalProgress, fmt } from '../lib/goals'
+import { hasTransactions } from '../lib/finance'
+import { getSettings } from '../lib/logic'
 import { addDays, fmtShort, today, daysBetween } from '../lib/dates'
 import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, Progress } from '../ui/kit'
 
@@ -10,7 +12,7 @@ const TYPES: { v: GoalType; label: string; hint: string }[] = [
   { v: 'kg', label: 'Kilaža', hint: 'Prati se automatski iz merenja kilaže.' },
   { v: 'espb', label: 'ESPB', hint: 'Računa se iz položenih predmeta.' },
   { v: 'predmeti', label: 'Broj položenih predmeta', hint: 'Broji predmete koje označiš kao položene.' },
-  { v: 'novac', label: 'Novac', hint: 'Za sada ručno upisuješ stanje — kasnije iz finansija.' },
+  { v: 'novac', label: 'Novac', hint: 'Računa se iz Finansija: početno stanje + prihodi − troškovi.' },
   { v: 'custom', label: 'Nešto drugo', hint: 'Ručno upisuješ napredak.' },
 ]
 
@@ -33,7 +35,7 @@ export default function Ciljevi() {
       <div className="grid md:grid-cols-2 gap-3">
         {goals.map((g) => {
           const p = goalProgress(g.data)
-          const manual = g.data.type === 'novac' || g.data.type === 'custom'
+          const manual = g.data.type === 'custom' || (g.data.type === 'novac' && !hasTransactions() && !getSettings().balanceStart)
           return (
             <Card key={g.id} className="p-5">
               <div className="flex items-start justify-between gap-2">

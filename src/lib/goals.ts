@@ -1,5 +1,6 @@
 import { store } from './store'
 import { getSettings } from './logic'
+import { balance, hasTransactions } from './finance'
 import type { GoalData, SubjectData, WeightData } from './types'
 
 export function latestWeight(): WeightData | undefined {
@@ -47,6 +48,8 @@ export function goalProgress(g: GoalData): { current: number | null; pct: number
     current = espbStats().espb
   } else if (g.type === 'predmeti') {
     current = espbStats().passedInApp
+  } else if (g.type === 'novac' && (hasTransactions() || getSettings().balanceStart)) {
+    current = balance()
   } else {
     current = g.current ?? 0
   }

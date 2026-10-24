@@ -17,6 +17,10 @@ export type Kind =
   | 'note'
   | 'settings'
   | 'meta'
+  | 'fincat'
+  | 'transaction'
+  | 'media'
+  | 'project'
 
 export interface Item<T = unknown> {
   id: string
@@ -35,7 +39,7 @@ export interface Category {
   order: number
 }
 
-export type Repeat = 'none' | 'daily' | 'weekly'
+export type Repeat = 'none' | 'daily' | 'weekly' | 'yearly'
 
 export interface EventData {
   title: string
@@ -191,6 +195,7 @@ export interface SettingsData {
   basePassed: number // broj položenih predmeta pre aplikacije
   baseAverage: number | null
   totalEspb: number
+  balanceStart: number // stanje novca pre početka vođenja finansija
   bedtime?: string // podsetnik za spavanje
   wakeTime?: string
   notifyObligations: boolean
@@ -208,8 +213,60 @@ export const DEFAULT_SETTINGS: SettingsData = {
   basePassed: 0,
   baseAverage: null,
   totalEspb: 240,
+  balanceStart: 0,
   bedtime: '21:30',
   wakeTime: '05:50',
   notifyObligations: true,
   weeklyReview: true,
+}
+
+// ---------------- Finansije ----------------
+
+export type TxType = 'prihod' | 'trosak'
+
+export interface FinCategory {
+  name: string
+  type: TxType
+  color: string
+  keywords: string[] // reči po kojima se prepoznaje (npr. "nis", "gorivo")
+  order: number
+}
+
+export interface TransactionData {
+  type: TxType
+  amount: number
+  categoryId?: string
+  text: string // šta je upisano, npr. "Maxi" ili "gorivo"
+  date: string
+}
+
+// ---------------- Filmovi i knjige ----------------
+
+export type MediaType = 'film' | 'serija' | 'knjiga'
+
+export interface MediaData {
+  title: string
+  type: MediaType
+  done: boolean
+  doneOn?: string
+  rating?: number
+  recommendedBy?: string
+  note?: string
+}
+
+// ---------------- Projekti ----------------
+
+export interface ProjectTask {
+  id: string
+  text: string
+  done: boolean
+}
+
+export interface ProjectData {
+  name: string
+  color: string
+  status: 'aktivan' | 'pauza' | 'zavrsen'
+  tasks: ProjectTask[]
+  notes?: string
+  order: number
 }

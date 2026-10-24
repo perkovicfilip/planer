@@ -35,6 +35,9 @@ import Ciljevi from './pages/Ciljevi'
 import Beleske from './pages/Beleske'
 import Podesavanja from './pages/Podesavanja'
 import Vise from './pages/Vise'
+import Finansije from './pages/Finansije'
+import Lista from './pages/Lista'
+import Projekti from './pages/Projekti'
 import { NAV } from './nav'
 import { startNative } from './native/bridge'
 
@@ -126,6 +129,9 @@ function Shell() {
       case 'beleske': return <Beleske />
       case 'podesavanja': return <Podesavanja />
       case 'vise': return <Vise />
+      case 'finansije': return <Finansije param={param} />
+      case 'lista': return <Lista />
+      case 'projekti': return <Projekti />
       default: return <Danas />
     }
   })()
