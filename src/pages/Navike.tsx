@@ -31,7 +31,7 @@ export default function Navike() {
           const best = bestStreak(h.data)
           const due = habitDue(h.data, date)
           return (
-            <Card key={h.id} className="p-4">
+            <Card key={h.id} className="p-3">
               <div className="flex items-center gap-3">
                 {due ? (
                   <CheckCircle done={habitDone(h.data, date)} color={h.data.color} onClick={() => toggleHabit(h.id, date)} size={30} />
@@ -49,7 +49,7 @@ export default function Navike() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-semibold tabular leading-none" style={{ color: h.data.color }}>
+                  <div className="text-lg font-semibold tabular leading-none" style={{ color: h.data.color }}>
                     {s}
                   </div>
                   <div className="text-[11px] text-ink-faint">niz · rekord {best}</div>

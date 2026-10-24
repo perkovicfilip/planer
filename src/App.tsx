@@ -139,8 +139,8 @@ function Shell() {
   return (
     <div className="min-h-full md:flex">
       {/* Bočni meni (laptop) */}
-      <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-line h-screen sticky top-0 px-3 py-5">
-        <div className="px-3 mb-6 flex items-center justify-between">
+      <aside className="hidden md:flex md:flex-col w-52 shrink-0 border-r border-line h-screen sticky top-0 px-2.5 py-4 overflow-y-auto">
+        <div className="px-2.5 mb-4 flex items-center justify-between">
           <span className="text-lg font-semibold tracking-tight">Planer</span>
           <SyncBadge />
         </div>
@@ -150,7 +150,7 @@ function Shell() {
               key={n.route}
               href={'#/' + n.route}
               className={cx(
-                'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition',
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition [&>svg]:w-[18px] [&>svg]:h-[18px]',
                 route === n.route ? 'bg-paper-sunk font-medium text-ink' : 'text-ink-soft hover:bg-paper-sunk/60',
               )}
             >
@@ -161,17 +161,17 @@ function Shell() {
         </nav>
       </aside>
 
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 md:h-screen md:overflow-y-auto md:flex md:flex-col">
         <div className="md:hidden flex items-center justify-between px-4 pt-3 safe-top">
           <span className="text-sm font-semibold text-ink-soft">Planer</span>
           <SyncBadge />
         </div>
         {DEMO && (
-          <div className="mx-4 md:mx-8 mt-3 md:mt-6 rounded-xl bg-accent-soft text-ink px-4 py-2.5 text-sm">
+          <div className="mx-4 md:mx-6 mt-3 md:mt-4 rounded-lg bg-accent-soft text-ink px-3 py-2 text-xs">
             Probna verzija sa primerima — sve što menjaš čuva se samo u ovom browseru.
           </div>
         )}
-        <div className="max-w-5xl mx-auto px-4 md:px-8 pt-3 md:pt-8 pb-28 md:pb-12">{page}</div>
+        <div className="w-full max-w-6xl mx-auto px-4 md:px-6 pt-3 md:pt-5 pb-28 md:pb-5 md:flex-1 md:flex md:flex-col md:min-h-0">{page}</div>
       </main>
 
       {/* Donji meni (telefon) */}

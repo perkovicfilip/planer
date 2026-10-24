@@ -57,7 +57,7 @@ function ProjectCard({ p, onEdit }: { p: Item<ProjectData>; onEdit: () => void }
     setText('')
   }
   return (
-    <Card className="p-4">
+    <Card className="p-3">
       <div className="flex items-start gap-3">
         <span className="w-3 h-3 rounded-full mt-1.5 shrink-0" style={{ background: p.data.color }} />
         <div className="flex-1 min-w-0">

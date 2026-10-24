@@ -16,8 +16,8 @@ export function Card({ children, className, onClick }: { children: ReactNode; cl
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-2 mt-1">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">{children}</h2>
+    <div className="flex items-center justify-between mb-1.5">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{children}</h2>
       {action}
     </div>
   )
@@ -25,10 +25,10 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
 
 export function PageHeader({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3 mb-4">
+    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {sub && <div className="text-sm text-ink-soft mt-0.5">{sub}</div>}
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {sub && <div className="text-xs text-ink-faint">{sub}</div>}
       </div>
       {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
     </header>
@@ -66,7 +66,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition disabled:opacity-40',
+        'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition disabled:opacity-40',
         v[variant],
         className,
       )}
@@ -93,14 +93,14 @@ export function IconButton({
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={cx('w-9 h-9 grid place-items-center rounded-xl text-ink-soft hover:bg-paper-sunk transition', className)}
+      className={cx('w-8 h-8 grid place-items-center rounded-lg text-ink-soft hover:bg-paper-sunk transition', className)}
     >
       {children}
     </button>
   )
 }
 
-export function CheckCircle({ done, color, onClick, size = 26 }: { done: boolean; color: string; onClick: () => void; size?: number }) {
+export function CheckCircle({ done, color, onClick, size = 22 }: { done: boolean; color: string; onClick: () => void; size?: number }) {
   return (
     <button
       type="button"
@@ -149,7 +149,7 @@ export function Modal({
           </IconButton>
         </div>
         <div className="px-5 pb-4 overflow-y-auto">{children}</div>
-        {footer && <div className="px-5 py-3 border-t border-line flex justify-end gap-2">{footer}</div>}
+        {footer && <div className="px-5 py-2 border-t border-line flex justify-end gap-2">{footer}</div>}
       </div>
     </div>
   )
@@ -197,7 +197,7 @@ export function Dot({ color, size = 10 }: { color: string; size?: number }) {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="text-sm text-ink-faint text-center py-6">{children}</div>
+  return <div className="text-sm text-ink-faint text-center py-4">{children}</div>
 }
 
 export function Segmented<T extends string>({
@@ -217,7 +217,7 @@ export function Segmented<T extends string>({
           type="button"
           onClick={() => onChange(o.value)}
           className={cx(
-            'px-3 py-1.5 text-sm rounded-[10px] transition whitespace-nowrap',
+            'px-2.5 py-1 text-sm rounded-[9px] transition whitespace-nowrap',
             value === o.value ? 'bg-paper-raised shadow-sm font-medium' : 'text-ink-soft',
           )}
         >

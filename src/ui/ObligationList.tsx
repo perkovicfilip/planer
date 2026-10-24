@@ -33,7 +33,7 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
       </div>
       <ul className="divide-y divide-line">
         {shown.map((o) => (
-          <li key={o.key} className="flex items-center gap-3 py-2.5">
+          <li key={o.key} className="flex items-center gap-3 py-1.5">
             <CheckCircle
               done={o.done}
               color={o.color}
@@ -43,7 +43,7 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
               }}
             />
             <div className={cx('flex-1 min-w-0', o.done && 'opacity-45')}>
-              <div className={cx('text-[15px] leading-snug truncate', o.done && 'line-through')}>{o.title}</div>
+              <div className={cx('text-sm leading-snug truncate', o.done && 'line-through')}>{o.title}</div>
               <div className="flex items-center gap-1.5 text-xs text-ink-faint">
                 {KIND_ICON[o.kind]}
                 {o.sub && <span className="truncate">{o.sub}</span>}

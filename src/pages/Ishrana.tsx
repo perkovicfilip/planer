@@ -106,7 +106,7 @@ function Plan({ date }: { date: string }) {
       </div>
 
       <div className="grid md:grid-cols-2 gap-3 mb-5">
-        <Card className="p-4">
+        <Card className="p-3">
           <div className="flex justify-between items-baseline">
             <span className="text-sm">Kalorije</span>
             <span className="text-lg font-semibold tabular">
@@ -118,7 +118,7 @@ function Plan({ date }: { date: string }) {
           </div>
           <div className="text-xs text-ink-faint mt-1.5">Planirano {planned.kcal} kcal</div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-3">
           <div className="flex justify-between items-baseline">
             <span className="text-sm">Proteini</span>
             <span className="text-lg font-semibold tabular">
@@ -250,7 +250,7 @@ function Suggestions({ kcal, protein, onAdd }: { kcal: number; protein: number; 
       .slice(0, 3)
   }, [foods, kcal, protein])
   return (
-    <div className="mt-6">
+    <div className="mt-4">
       <SectionTitle>
         Fali ti još {[kcal > 0 && `${kcal} kcal`, protein > 0 && `${protein} g proteina`].filter(Boolean).join(' i ')}
       </SectionTitle>
@@ -500,7 +500,7 @@ function FoodLibrary() {
         ) : (
           <ul className="divide-y divide-line">
             {foods.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 py-2.5">
+              <li key={f.id} className="flex items-center gap-3 py-1.5">
                 <button
                   aria-label="Omiljeno"
                   onClick={() => store.update<FoodData>(f.id, (d) => ({ ...d, favorite: !d.favorite }))}
@@ -590,7 +590,7 @@ function Weight() {
   const first = weights[0]
   return (
     <div>
-      <Card className="p-4 mb-4">
+      <Card className="p-3 mb-4">
         <div className="flex flex-wrap gap-2 items-end">
           <Field label="Kilaža (kg)">
             <input inputMode="decimal" className="w-32" value={kg} onChange={(e) => setKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
@@ -618,7 +618,7 @@ function Weight() {
           </div>
         )}
       </Card>
-      <Card className="p-4 mb-4">
+      <Card className="p-3 mb-4">
         <LineChart points={weights.slice(-60).map((w) => ({ x: fmtShort(w.data.date), y: w.data.kg }))} unit=" kg" color="#2563eb" />
       </Card>
       <Card className="px-4 py-1">

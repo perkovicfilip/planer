@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Plus, Pencil } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
 import type { GoalData, GoalType } from '../lib/types'
-import { goalProgress, fmt } from '../lib/goals'
-import { hasTransactions } from '../lib/finance'
+import { goalProgress, fmt, espbInApp, latestWeight, espbStats } from '../lib/goals'
+import { balance, hasTransactions } from '../lib/finance'
 import { getSettings } from '../lib/logic'
+import { DEFAULT_SETTINGS, type SettingsData, type WeightData } from '../lib/types'
 import { addDays, fmtShort, today, daysBetween } from '../lib/dates'
 import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, Progress } from '../ui/kit'
 
@@ -37,7 +38,7 @@ export default function Ciljevi() {
           const p = goalProgress(g.data)
           const manual = g.data.type === 'custom' || (g.data.type === 'novac' && !hasTransactions() && !getSettings().balanceStart)
           return (
-            <Card key={g.id} className="p-5">
+            <Card key={g.id} className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="font-medium">{g.data.title}</div>
@@ -50,7 +51,7 @@ export default function Ciljevi() {
                   <Pencil size={15} />
                 </IconButton>
               </div>
-              <div className="text-2xl font-semibold tabular mt-3">{p.text}</div>
+              <div className="text-lg font-semibold tabular mt-3">{p.text}</div>
               <div className="mt-2">
                 <Progress value={p.pct} max={100} color={g.data.color} height={10} />
               </div>
@@ -94,16 +95,41 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
     color: '#2563eb',
   })
   const [d, setD] = useState<GoalData>(blank())
+  const [now, setNow] = useState<string>('')
   const [lastId, setLastId] = useState<string | null>(null)
+  const currentOf = (g: GoalData): number | null => {
+    if (g.type === 'espb') return espbStats().espb
+    if (g.type === 'kg') return latestWeight()?.kg ?? null
+    if (g.type === 'novac' && (hasTransactions() || getSettings().balanceStart)) return balance()
+    if (g.type === 'predmeti') return espbStats().passedInApp
+    return g.current ?? null
+  }
   if (id !== lastId) {
     setLastId(id)
-    setD(existing?.data ?? blank())
+    const g = existing?.data ?? blank()
+    setD(g)
+    const c = id ? currentOf(g) : null
+    setNow(c === null ? '' : String(c))
   }
   const set = <K extends keyof GoalData>(k: K, v: GoalData[K]) => setD((x) => ({ ...x, [k]: v }))
   const save = () => {
     if (!d.title.trim()) return
-    if (existing) store.update<GoalData>(existing.id, () => d)
-    else store.put<GoalData>('goal', d)
+    let data = { ...d }
+    const v = now.trim() === '' ? null : Number(now.replace(',', '.'))
+    const before = currentOf(d)
+    if (v !== null && !Number.isNaN(v) && v !== before) {
+      // upiši trenutno stanje tamo odakle se cilj računa
+      if (d.type === 'espb') setSetting({ baseEspb: v - espbInApp() })
+      else if (d.type === 'kg') {
+        const ex = store.list<WeightData>('weight').find((w) => w.data.date === today())
+        if (ex) store.update<WeightData>(ex.id, () => ({ date: today(), kg: v }))
+        else store.put<WeightData>('weight', { date: today(), kg: v })
+      } else if (d.type === 'novac' && (hasTransactions() || getSettings().balanceStart)) {
+        setSetting({ balanceStart: getSettings().balanceStart + (v - balance()) })
+      } else if (d.type !== 'predmeti') data = { ...data, current: v }
+    }
+    if (existing) store.update<GoalData>(existing.id, () => data)
+    else store.put<GoalData>('goal', data)
     onClose()
   }
   return (
@@ -152,13 +178,19 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
         <Field label="Cilj">
           <input type="number" className="w-full" value={d.target || ''} onChange={(e) => set('target', Number(e.target.value))} />
         </Field>
-        <Field label="Početna vrednost" hint="Prazno = automatski">
-          <input
-            type="number"
-            className="w-full"
-            value={d.start ?? ''}
-            onChange={(e) => set('start', e.target.value === '' ? undefined : Number(e.target.value))}
-          />
+        <Field
+          label="Trenutno"
+          hint={
+            d.type === 'espb'
+              ? 'Koliko ESPB imaš sada.'
+              : d.type === 'kg'
+                ? 'Upisaće se kao današnja kilaža.'
+                : d.type === 'predmeti'
+                  ? 'Broji se sam iz Predmeta.'
+                  : undefined
+          }
+        >
+          <input type="number" className="w-full" disabled={d.type === 'predmeti'} value={now} onChange={(e) => setNow(e.target.value)} />
         </Field>
       </div>
       {(d.type === 'novac' || d.type === 'custom') && (
@@ -175,4 +207,10 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
       {d.target > 0 && <div className="text-xs text-ink-faint">Cilj: {fmt(d.target)}</div>}
     </Modal>
   )
+}
+
+function setSetting(patch: Partial<SettingsData>) {
+  const it = store.list<SettingsData>('settings').sort((a, b) => a.id.localeCompare(b.id))[0]
+  if (it) store.update<SettingsData>(it.id, (x) => ({ ...DEFAULT_SETTINGS, ...x, ...patch }))
+  else store.put<SettingsData>('settings', { ...DEFAULT_SETTINGS, ...patch }, 'settings-singleton')
 }

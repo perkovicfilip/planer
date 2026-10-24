@@ -68,12 +68,12 @@ function MiniDay({ date, mark, onClick }: { date: string; mark?: DayMark; onClic
     <button
       onClick={onClick}
       title={titleFor(date, mark)}
-      className={cx('relative h-9 grid place-items-center', exam ? 'tint' : weekend && 'weekend')}
+      className={cx('relative h-7 grid place-items-center', exam ? 'tint' : weekend && 'weekend')}
       style={exam ? ({ '--tint': exam.tint } as React.CSSProperties) : undefined}
     >
       <span
         className={cx(
-          'w-7 h-7 rounded-full grid place-items-center text-[13px] tabular',
+          'w-6 h-6 rounded-full grid place-items-center text-xs tabular',
           filled ? 'text-white font-semibold' : holiday ? 'text-rose-600 font-semibold' : bez ? 'text-amber-600' : weekend ? 'text-ink-soft' : 'text-ink',
           isToday && 'ring-2 ring-ink ring-offset-1 ring-offset-transparent',
         )}
@@ -107,7 +107,7 @@ function MiniMonth({ y, m, marks }: { y: number; m: number; marks: Map<string, D
   const rows = monthGrid(y, m)
   return (
     <div>
-      <div className="text-center font-semibold mb-1 capitalize">
+      <div className="text-center text-sm font-semibold mb-0.5 capitalize">
         {MONTHS[m]} <span className="text-ink-faint font-normal">{y}</span>
       </div>
       <div className="grid grid-cols-7 text-[11px] text-ink-faint text-center mb-0.5">
@@ -141,7 +141,7 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
       </div>
       <div className="grid grid-cols-7">
         {rows.flat().map((d, i) => {
-          if (!d) return <div key={'x' + i} className={cx('min-h-[84px] border-b border-r border-line', i % 7 >= 5 && 'weekend')} />
+          if (!d) return <div key={'x' + i} className={cx('min-h-[72px] border-b border-r border-line', i % 7 >= 5 && 'weekend')} />
           const exam = examPeriod(d)
           const holiday = isHoliday(d)
           const mark = marks.get(d)
@@ -151,7 +151,7 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
               onClick={() => go('dan', d)}
               title={titleFor(d, mark)}
               className={cx(
-                'group min-h-[84px] md:min-h-[104px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative',
+                'group min-h-[72px] md:min-h-[86px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative',
                 exam ? 'tint' : isWeekend(d) && 'weekend',
               )}
               style={exam ? ({ '--tint': exam.tint } as React.CSSProperties) : undefined}
@@ -241,6 +241,15 @@ export default function Kalendar({ param }: { param?: string }) {
         title={<span className="capitalize">{title}</span>}
         right={
           <>
+            <IconButton title="Nazad" onClick={() => shift(-1)}>
+              <ChevronLeft size={18} />
+            </IconButton>
+            <Button variant="ghost" onClick={() => setAnchor({ y: now.getFullYear(), m: now.getMonth() })}>
+              Danas
+            </Button>
+            <IconButton title="Napred" onClick={() => shift(1)}>
+              <ChevronRight size={18} />
+            </IconButton>
             <Segmented<View>
               value={view}
               onChange={setView}
@@ -249,28 +258,17 @@ export default function Kalendar({ param }: { param?: string }) {
                 { value: 'mesec', label: 'Mesec' },
               ]}
             />
+            <Button variant="primary" onClick={() => setAdding(today())}>
+              <Plus size={16} /> Događaj
+            </Button>
           </>
         }
       />
-      <div className="flex items-center gap-1 mb-4">
-        <IconButton title="Nazad" onClick={() => shift(-1)}>
-          <ChevronLeft size={18} />
-        </IconButton>
-        <Button variant="ghost" onClick={() => setAnchor({ y: now.getFullYear(), m: now.getMonth() })}>
-          Danas
-        </Button>
-        <IconButton title="Napred" onClick={() => shift(1)}>
-          <ChevronRight size={18} />
-        </IconButton>
-        <Button variant="primary" className="ml-auto" onClick={() => setAdding(today())}>
-          <Plus size={16} /> Događaj
-        </Button>
-      </div>
 
-      <div className="lg:flex gap-6">
+      <div className="lg:flex gap-4">
         <div className="flex-1 min-w-0">
           {view === 'godina' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-3">
               {months.map((mm) => (
                 <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} />
               ))}
@@ -281,10 +279,10 @@ export default function Kalendar({ param }: { param?: string }) {
         </div>
 
         {/* Legenda */}
-        <aside className="lg:w-60 shrink-0 mt-6 lg:mt-0">
-          <Card className="p-4">
+        <aside className="lg:w-52 shrink-0 mt-4 lg:mt-0 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
+          <Card className="p-3">
             <div className="text-sm font-semibold mb-2">Aktivnosti</div>
-            <div className="space-y-1">
+            <div className="space-y-0">
               <LegendRow active={filter === null} onClick={() => setFilter(null)} label="Sve" />
               {sortedCats.map((c) => (
                 <LegendRow
@@ -343,10 +341,7 @@ export default function Kalendar({ param }: { param?: string }) {
 
 function LegendRow({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color?: string }) {
   return (
-    <button onClick={onClick} className={cx('w-full flex items-center gap-2 px-2 py-1 rounded-lg text-sm text-left', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
-      <span className={cx('w-4 h-4 rounded-full border-2 grid place-items-center', active ? 'border-ink' : 'border-line')}>
-        {active && <span className="w-2 h-2 rounded-full bg-ink" />}
-      </span>
+    <button onClick={onClick} className={cx('w-full flex items-center gap-2 px-1.5 py-0.5 rounded-md text-[13px] text-left', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
       {color && <Dot color={color} />}
       <span className="truncate">{label}</span>
     </button>

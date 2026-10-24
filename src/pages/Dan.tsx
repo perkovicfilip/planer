@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, MapPin } from 'lucide-react'
 import { useKind, useVersion } from '../lib/store'
 import type { Category, EventData, Item, SubjectData } from '../lib/types'
@@ -12,7 +12,7 @@ import { ObligationList } from '../ui/ObligationList'
 
 const START_H = 5
 const END_H = 24
-const PX = 56 // piksela po satu
+const PX = 44 // piksela po satu
 
 interface Block {
   key: string
@@ -57,6 +57,14 @@ export default function Dan({ param }: { param?: string }) {
   const [plan] = useWeekPlan()
   const [showAllClasses, setShowAllClasses] = useState(false)
   const [editor, setEditor] = useState<{ id?: string; start?: string } | null>(null)
+  const scrolled = useRef<string | null>(null)
+  const scrollTo = (el: HTMLDivElement | null) => {
+    const card = el?.parentElement
+    if (!card || scrolled.current === date) return
+    scrolled.current = date
+    const target = date === today() ? Math.max(START_H, Math.floor(nowMin() / 60) - 1) : 7
+    card.scrollTop = (target - START_H) * PX
+  }
 
   const catMap = useMemo(() => new Map(cats.map((c) => [c.id, c.data])), [cats])
   const dayEvents = eventsOn(events, date)
@@ -116,31 +124,31 @@ export default function Dan({ param }: { param?: string }) {
   const plainUntimed = untimed.filter((e) => !(e.data.endDate && e.data.endDate !== e.data.date))
 
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title={relDay(date)}
         sub={fmtLong(date)}
         right={
-          <Button variant="primary" onClick={() => setEditor({})}>
-            <Plus size={16} /> Dodaj
-          </Button>
+          <>
+            <IconButton title="Prethodni dan" onClick={() => go('dan', addDays(date, -1))}>
+              <ChevronLeft size={18} />
+            </IconButton>
+            <Button variant="ghost" onClick={() => go('dan', today())}>
+              Danas
+            </Button>
+            <IconButton title="Sledeći dan" onClick={() => go('dan', addDays(date, 1))}>
+              <ChevronRight size={18} />
+            </IconButton>
+            <input type="date" value={date} onChange={(e) => e.target.value && go('dan', e.target.value)} className="text-sm" />
+            <Button variant="primary" onClick={() => setEditor({})}>
+              <Plus size={16} /> Dodaj
+            </Button>
+          </>
         }
       />
-      <div className="flex items-center gap-1 mb-4">
-        <IconButton title="Prethodni dan" onClick={() => go('dan', addDays(date, -1))}>
-          <ChevronLeft size={18} />
-        </IconButton>
-        <Button variant="ghost" onClick={() => go('dan', today())}>
-          Danas
-        </Button>
-        <IconButton title="Sledeći dan" onClick={() => go('dan', addDays(date, 1))}>
-          <ChevronRight size={18} />
-        </IconButton>
-        <input type="date" value={date} onChange={(e) => e.target.value && go('dan', e.target.value)} className="ml-2 py-1.5 text-sm" />
-      </div>
 
       {(periods.length > 0 || makeup || milestone || multiDay.length > 0) && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-3">
           {periods.map((p) => (
             <span
               key={p.id}
@@ -172,8 +180,8 @@ export default function Dan({ param }: { param?: string }) {
         </div>
       )}
 
-      <div className="lg:grid lg:grid-cols-[1fr_340px] gap-6">
-        <div>
+      <div className="lg:grid lg:grid-cols-[1fr_320px] gap-4 md:flex-1 md:min-h-0">
+        <div className="flex flex-col min-h-0">
           {plainUntimed.length > 0 && (
             <div className="mb-3">
               <SectionTitle>Bez tačnog vremena</SectionTitle>
@@ -185,13 +193,14 @@ export default function Dan({ param }: { param?: string }) {
             </div>
           )}
           <div className="flex items-center justify-between">
-            <SectionTitle>Raspored dana</SectionTitle>
-            <label className="text-xs text-ink-soft flex items-center gap-1.5 mb-2">
+            <SectionTitle>Po satima · klikni na prazno vreme da dodaš</SectionTitle>
+            <label className="text-xs text-ink-soft flex items-center gap-1.5 mb-1.5">
               <input type="checkbox" checked={showAllClasses} onChange={(e) => setShowAllClasses(e.target.checked)} />
               Svi časovi
             </label>
           </div>
-          <Card className="relative overflow-hidden">
+          <Card className="relative overflow-y-auto min-h-0 flex-1 max-h-[70vh] md:max-h-none">
+            <div ref={scrollTo} />
             <div className="relative" style={{ height: hours.length * PX }}>
               {hours.map((h, i) => (
                 <div
@@ -242,12 +251,11 @@ export default function Dan({ param }: { param?: string }) {
               )}
             </div>
           </Card>
-          <p className="text-xs text-ink-faint mt-2">Klikni na prazno mesto da dodaš nešto u to vreme.</p>
         </div>
 
-        <div className="mt-6 lg:mt-0">
+        <div className="mt-4 lg:mt-0 flex flex-col min-h-0">
           <SectionTitle>Obaveze</SectionTitle>
-          <Card className="px-4 py-2">
+          <Card className="px-3 py-2 overflow-y-auto min-h-0 flex-1">
             <ObligationList date={date} />
           </Card>
         </div>

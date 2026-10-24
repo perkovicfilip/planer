@@ -54,11 +54,13 @@ export default function Podesavanja() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <PageHeader title="Podešavanja" />
+      <div className="lg:columns-2 gap-4">
 
+      <div className="break-inside-avoid">
       <SectionTitle>Opšte</SectionTitle>
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <Field label="Ime (za pozdrav)">
           <input className="w-full" value={s.name} onChange={(e) => setS((d) => ({ ...d, name: e.target.value }))} />
         </Field>
@@ -71,9 +73,11 @@ export default function Podesavanja() {
           </Field>
         </div>
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle>Ishrana</SectionTitle>
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Cilj kalorija (kcal)">
             <input type="number" className="w-full" value={s.kcalGoal} onChange={num('kcalGoal')} />
@@ -92,9 +96,11 @@ export default function Podesavanja() {
           </Field>
         </div>
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle>Finansije</SectionTitle>
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <Field label="Početno stanje novca (din)" hint="Koliko imaš sad, pre nego što počneš da upisuješ. Na to se dodaju prihodi i oduzimaju troškovi.">
           <input type="number" className="w-full" value={s.balanceStart || ''} onChange={num('balanceStart')} />
         </Field>
@@ -102,9 +108,11 @@ export default function Podesavanja() {
           Kategorije prihoda i troškova →
         </a>
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle>Fakultet</SectionTitle>
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="ESPB položeni ranije">
             <input type="number" className="w-full" value={s.baseEspb} onChange={num('baseEspb')} />
@@ -126,7 +134,9 @@ export default function Podesavanja() {
           </Field>
         </div>
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle
         action={
           <Button variant="ghost" onClick={() => setCatEdit({ data: { name: '', color: '#3b82f6', group: 'ostalo', order: cats.length + 1 } })}>
@@ -136,7 +146,7 @@ export default function Podesavanja() {
       >
         Aktivnosti i boje (kalendar)
       </SectionTitle>
-      <Card className="px-4 py-1 mb-6">
+      <Card className="px-3 py-1 mb-4 max-h-72 overflow-y-auto">
         <ul className="divide-y divide-line">
           {cats.map((c) => (
             <li key={c.id} className="flex items-center gap-3 py-2">
@@ -150,9 +160,11 @@ export default function Podesavanja() {
           ))}
         </ul>
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle>Notifikacije</SectionTitle>
-      <Card className="p-4 mb-6 space-y-3">
+      <Card className="p-3 mb-4 space-y-3">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={s.notifyObligations} onChange={(e) => setS((d) => ({ ...d, notifyObligations: e.target.checked }))} />
           Današnje obaveze u notifikacionom baru
@@ -166,9 +178,11 @@ export default function Podesavanja() {
           <p className="text-xs text-ink-faint">Notifikacije rade u Android aplikaciji. Na laptopu (web) ih nema.</p>
         )}
       </Card>
+      </div>
 
+      <div className="break-inside-avoid">
       <SectionTitle>Podaci</SectionTitle>
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <div className="flex flex-wrap gap-2">
           <Button onClick={exportData}>
             <Download size={16} /> Izvezi rezervnu kopiju
@@ -191,6 +205,8 @@ export default function Podesavanja() {
         {msg && <p className="text-sm text-ink-soft mt-3">{msg}</p>}
         <p className="text-xs text-ink-faint mt-3">Uvoz dodaje stavke i menja one sa istim ID-jem — ništa se ne briše.</p>
       </Card>
+      </div>
+      </div>
 
       {!LOCAL_MODE && (
         <Button variant="ghost" className="text-rose-600" onClick={() => supabase.auth.signOut()}>

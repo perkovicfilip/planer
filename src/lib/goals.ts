@@ -46,6 +46,7 @@ export function goalProgress(g: GoalData): { current: number | null; pct: number
     }
   } else if (g.type === 'espb') {
     current = espbStats().espb
+    start = 0
   } else if (g.type === 'predmeti') {
     current = espbStats().passedInApp
   } else if (g.type === 'novac' && (hasTransactions() || getSettings().balanceStart)) {
@@ -62,4 +63,12 @@ export function goalProgress(g: GoalData): { current: number | null; pct: number
 
 export function fmt(n: number) {
   return Number.isInteger(n) ? n.toLocaleString('sr-Latn-RS') : n.toLocaleString('sr-Latn-RS', { maximumFractionDigits: 1 })
+}
+
+/** ESPB položeni kroz aplikaciju (predmeti označeni kao položeni). */
+export function espbInApp(): number {
+  return store
+    .list<SubjectData>('subject')
+    .filter((x) => x.data.status === 'polozen')
+    .reduce((a, x) => a + (x.data.espb || 0), 0)
 }

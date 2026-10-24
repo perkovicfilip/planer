@@ -1,14 +1,13 @@
 import { useState } from 'react'
-import { ArrowRight, Plus, Send } from 'lucide-react'
-import { store, useKind, useVersion } from '../lib/store'
-import type { Category, EventData, GoalData, HabitData, MealDayData, NoteData } from '../lib/types'
+import { Plus } from 'lucide-react'
+import { useKind, useVersion } from '../lib/store'
+import type { Category, EventData, GoalData } from '../lib/types'
 import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
-import { expectedTimes, fmtTime, mealDayFor, occursOn, streak, totals, useSettings, useWeekPlan } from '../lib/logic'
+import { occursOn, useSettings } from '../lib/logic'
 import { goalProgress } from '../lib/goals'
 import { PERIODS } from '../data/ftn'
-import { fmtDin, monthTotals } from '../lib/finance'
 import { go } from '../lib/router'
-import { Button, Card, Dot, Progress, SectionTitle, cx } from '../ui/kit'
+import { Card, Dot, cx } from '../ui/kit'
 import { ObligationList } from '../ui/ObligationList'
 import { EventEditor } from '../ui/EventEditor'
 
@@ -24,228 +23,147 @@ export default function Danas() {
   useVersion()
   const date = today()
   const [settings] = useSettings()
-  const [plan] = useWeekPlan()
   const goals = useKind<GoalData>('goal').sort((a, b) => a.data.order - b.data.order)
   const events = useKind<EventData>('event')
   const cats = useKind<Category>('category')
-  const habits = useKind<HabitData>('habit').filter((h) => !h.data.hidden)
   const [hideDone, setHideDone] = useState(true)
   const [adding, setAdding] = useState(false)
-  const [note, setNote] = useState('')
 
-  const md = mealDayFor(date)
-  const money = monthTotals(date.slice(0, 7))
-  const meals = md?.data.meals ?? []
-  const t = totals(meals)
-  const exp = expectedTimes(date, meals, settings, plan)
-  const nextIdx = meals.findIndex((m) => !m.eatenAt)
-
-  // Uskoro: događaji u narednih 60 dana iz kategorija sa fakulteta + sve sa naslovom ispit/kolokvijum
+  // Uskoro: ispiti, kolokvijumi i ostalo sa fakulteta u narednih 60 dana
   const catMap = new Map(cats.map((c) => [c.id, c.data]))
   const horizon = addDays(date, 60)
-  const upcoming: { date: string; title: string; color: string; id: string }[] = []
+  const upcoming: { date: string; title: string; sub?: string; color: string; id: string }[] = []
   for (const e of events) {
+    if (e.data.repeat === 'yearly') {
+      // rođendani i godišnjice: sledeće pojavljivanje
+      let next = date.slice(0, 4) + e.data.date.slice(4)
+      if (next < date) next = String(Number(date.slice(0, 4)) + 1) + e.data.date.slice(4)
+      if (next <= addDays(date, 30)) {
+        const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+        upcoming.push({ date: next, title: e.data.title, color: c?.color ?? '#f97316', id: e.id + next })
+      }
+      continue
+    }
     if (e.data.repeat !== 'none') continue
     if (e.data.date < date || e.data.date > horizon) continue
     const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
-    const important = c?.group === 'fakultet' || /ispit|kolokv|klk|rok|predaja|odbrana/i.test(e.data.title)
+    const important = c?.group === 'fakultet' || /ispit|kolokv|klk|rok|predaja|odbrana|rođendan|rodjendan/i.test(e.data.title) || !!e.data.endDate
     if (!important) continue
-    upcoming.push({ date: e.data.date, title: e.data.title + (c && c.group === 'fakultet' && !e.data.title.includes(c.name) ? ` · ${c.name}` : ''), color: c?.color ?? '#64748b', id: e.id })
+    upcoming.push({
+      date: e.data.date,
+      title: e.data.title,
+      sub: c && c.group === 'fakultet' && !e.data.title.includes(c.name) ? c.name : undefined,
+      color: c?.color ?? '#64748b',
+      id: e.id,
+    })
   }
   upcoming.sort((a, b) => a.date.localeCompare(b.date))
   const nextPeriod = PERIODS.filter((p) => p.kind === 'rok' && p.to >= date).sort((a, b) => a.from.localeCompare(b.from))[0]
   const onTrip = events.find((e) => e.data.endDate && occursOn(e.data, date))
 
-  const addNote = () => {
-    if (!note.trim()) return
-    store.put<NoteData>('note', { text: note.trim(), done: false })
-    setNote('')
-  }
-
   return (
-    <div>
-      <header className="mb-5">
-        <div className="text-sm text-ink-soft">{fmtLong(date)}</div>
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          {greeting()}
-          {settings.name ? `, ${settings.name}` : ''}
-        </h1>
-        {onTrip && <div className="text-sm text-violet-600 mt-1">Na putu: {onTrip.data.title}</div>}
-      </header>
-
-      {/* Ciljevi */}
-      <section className="mb-6">
-        <SectionTitle action={<a href="#/ciljevi" className="text-xs text-accent">Izmeni</a>}>Ciljevi za ovu godinu</SectionTitle>
-        {goals.length === 0 ? (
-          <Card className="p-4 flex items-center justify-between gap-3">
-            <span className="text-sm text-ink-soft">Postavi ciljeve — kilaža, ESPB, novac — i pratiće se sami.</span>
-            <Button variant="primary" onClick={() => go('ciljevi')}>
-              Postavi
-            </Button>
-          </Card>
-        ) : (
-          <div className="flex md:grid md:grid-cols-3 gap-3 overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 snap-x">
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
+      {/* Zaglavlje + ciljevi u jednom redu */}
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 mb-3">
+        <div>
+          <div className="text-xs text-ink-faint">{fmtLong(date)}</div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            {greeting()}
+            {settings.name ? `, ${settings.name}` : ''}
+            {onTrip && <span className="text-sm font-normal text-violet-600 ml-2">· na putu: {onTrip.data.title}</span>}
+          </h1>
+        </div>
+        {goals.length > 0 ? (
+          <button onClick={() => go('ciljevi')} className="flex flex-wrap gap-x-5 gap-y-1 text-left" title="Ciljevi">
             {goals.map((g) => {
               const p = goalProgress(g.data)
-              const left = g.data.deadline ? daysBetween(date, g.data.deadline) : null
               return (
-                <Card key={g.id} className="p-4 min-w-[220px] snap-start" onClick={() => go('ciljevi')}>
-                  <div className="text-sm font-medium truncate">{g.data.title}</div>
-                  <div className="text-xl font-semibold tabular mt-1">{p.text}</div>
-                  <div className="mt-2">
-                    <Progress value={p.pct} max={100} color={g.data.color} />
+                <div key={g.id} className="w-36">
+                  <div className="flex justify-between text-[11px] text-ink-soft">
+                    <span className="truncate">{g.data.title}</span>
+                    <span className="tabular shrink-0 ml-1">{Math.round(p.pct)}%</span>
                   </div>
-                  <div className="text-xs text-ink-faint mt-1.5 tabular">
-                    {Math.round(p.pct)}%{left !== null && left >= 0 ? ` · još ${left} dana` : ''}
+                  <div className="h-1 rounded-full bg-paper-sunk overflow-hidden mt-0.5">
+                    <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
                   </div>
-                </Card>
+                  <div className="text-[11px] text-ink-faint tabular truncate mt-0.5">{p.text}</div>
+                </div>
               )
             })}
-          </div>
-        )}
-      </section>
-
-      <div className="lg:grid lg:grid-cols-[1fr_360px] gap-6">
-        <section className="mb-6">
-          <SectionTitle
-            action={
-              <div className="flex items-center gap-3">
-                <button onClick={() => setHideDone(!hideDone)} className="text-xs text-ink-soft">
-                  {hideDone ? 'Prikaži urađeno' : 'Sakrij urađeno'}
-                </button>
-                <button onClick={() => setAdding(true)} className="text-xs text-accent inline-flex items-center gap-0.5">
-                  <Plus size={13} /> Dodaj
-                </button>
-              </div>
-            }
-          >
-            Danas
-          </SectionTitle>
-          <Card className="px-4 py-2">
-            <ObligationList date={date} hideDone={hideDone} />
-          </Card>
-          <a href="#/dan" className="inline-flex items-center gap-1 text-sm text-accent mt-2">
-            Raspored po satima <ArrowRight size={14} />
+          </button>
+        ) : (
+          <a href="#/ciljevi" className="text-xs text-accent">
+            + Postavi ciljeve
           </a>
-        </section>
+        )}
+      </header>
 
-        <div className="space-y-6">
-          {/* Ishrana */}
-          <section>
-            <SectionTitle action={<a href="#/ishrana" className="text-xs text-accent">Otvori</a>}>Ishrana</SectionTitle>
-            <Card className="p-4" onClick={() => go('ishrana')}>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Kalorije</span>
-                <span className="tabular text-ink-soft">
-                  {t.kcal} / {settings.kcalGoal}
-                </span>
-              </div>
-              <Progress value={t.kcal} max={settings.kcalGoal} color="#f59e0b" />
-              <div className="flex justify-between text-sm mb-1 mt-3">
-                <span>Proteini</span>
-                <span className="tabular text-ink-soft">
-                  {t.protein} / {settings.proteinGoal} g
-                </span>
-              </div>
-              <Progress value={t.protein} max={settings.proteinGoal} color="#e11d48" />
-              <div className="text-xs text-ink-faint mt-3">
-                {meals.length === 0
-                  ? 'Nemaš plan obroka za danas — dodaj ga u Ishrani.'
-                  : nextIdx === -1
-                    ? 'Svi obroci za danas su pojedeni.'
-                    : `Sledeći: ${meals[nextIdx].name} oko ${fmtTime(exp[nextIdx])}`}
-              </div>
-            </Card>
-          </section>
+      <div className="md:flex-1 md:min-h-0 grid md:grid-cols-[1fr_300px] gap-4">
+        {/* Obaveze */}
+        <Card className="flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <h2 className="text-sm font-semibold">Obaveze za danas</h2>
+            <div className="flex items-center gap-3 text-xs">
+              <button onClick={() => setHideDone(!hideDone)} className="text-ink-soft hover:text-ink">
+                {hideDone ? 'Prikaži urađeno' : 'Sakrij urađeno'}
+              </button>
+              <button onClick={() => setAdding(true)} className="text-accent inline-flex items-center gap-0.5">
+                <Plus size={13} /> Dodaj
+              </button>
+              <a href="#/dan" className="text-ink-soft hover:text-ink">
+                Po satima →
+              </a>
+            </div>
+          </div>
+          <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
+            <ObligationList date={date} hideDone={hideDone} />
+          </div>
+        </Card>
 
-          {/* Novac */}
-          <section>
-            <SectionTitle action={<a href="#/finansije" className="text-xs text-accent">Upiši</a>}>Novac ovog meseca</SectionTitle>
-            <Card className="p-4 grid grid-cols-2 gap-3 cursor-pointer" onClick={() => go('finansije')}>
-              <div>
-                <div className="text-xs text-ink-faint">Zarađeno</div>
-                <div className="text-lg font-semibold tabular text-emerald-600">{fmtDin(money.income)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-ink-faint">Potrošeno</div>
-                <div className="text-lg font-semibold tabular text-rose-600">{fmtDin(money.expense)}</div>
-              </div>
-            </Card>
-          </section>
-
-          {/* Uskoro */}
-          <section>
-            <SectionTitle>Uskoro</SectionTitle>
-            <Card className="px-4 py-2">
-              {upcoming.length === 0 && !nextPeriod ? (
-                <div className="text-sm text-ink-faint py-3">Ništa važno u narednih 60 dana.</div>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {upcoming.slice(0, 6).map((u) => (
-                    <li key={u.id} className="flex items-center gap-3 py-2.5 cursor-pointer" onClick={() => go('dan', u.date)}>
-                      <Dot color={u.color} />
+        {/* Uskoro */}
+        <Card className="flex flex-col min-h-0">
+          <div className="px-4 pt-3 pb-1">
+            <h2 className="text-sm font-semibold">Uskoro</h2>
+          </div>
+          <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
+            {upcoming.length === 0 && !nextPeriod ? (
+              <div className="text-sm text-ink-faint py-3">Ništa važno u narednih 60 dana.</div>
+            ) : (
+              <ul className="divide-y divide-line">
+                {upcoming.map((u) => {
+                  const d = daysBetween(date, u.date)
+                  return (
+                    <li key={u.id} className="flex items-center gap-2.5 py-2 cursor-pointer" onClick={() => go('dan', u.date)}>
+                      <Dot color={u.color} size={8} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate">{u.title}</div>
-                        <div className="text-xs text-ink-faint">{fmtShort(u.date)}</div>
+                        <div className="text-sm leading-tight truncate">{u.title}</div>
+                        <div className="text-[11px] text-ink-faint truncate">
+                          {fmtShort(u.date)}
+                          {u.sub && ` · ${u.sub}`}
+                        </div>
                       </div>
-                      <span className={cx('text-xs tabular', daysBetween(date, u.date) <= 7 ? 'text-rose-600 font-medium' : 'text-ink-soft')}>
+                      <span className={cx('text-xs tabular shrink-0', d <= 3 ? 'text-rose-600 font-semibold' : d <= 7 ? 'text-amber-600' : 'text-ink-faint')}>
                         {inDays(u.date)}
                       </span>
                     </li>
-                  ))}
-                  {nextPeriod && (
-                    <li className="flex items-center gap-3 py-2.5">
-                      <span className="w-2.5 h-2.5 rounded-full tint border border-line" style={{ '--tint': nextPeriod.tint } as React.CSSProperties} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate">{nextPeriod.name}</div>
-                        <div className="text-xs text-ink-faint">
-                          {fmtShort(nextPeriod.from)} – {fmtShort(nextPeriod.to)}
-                        </div>
+                  )
+                })}
+                {nextPeriod && (
+                  <li className="flex items-center gap-2.5 py-2">
+                    <span className="w-2 h-2 rounded-full tint ring-1 ring-line" style={{ '--tint': nextPeriod.tint } as React.CSSProperties} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm leading-tight truncate">{nextPeriod.name}</div>
+                      <div className="text-[11px] text-ink-faint">
+                        {fmtShort(nextPeriod.from)} – {fmtShort(nextPeriod.to)}
                       </div>
-                      <span className="text-xs tabular text-ink-soft">{nextPeriod.from <= date ? 'u toku' : inDays(nextPeriod.from)}</span>
-                    </li>
-                  )}
-                </ul>
-              )}
-            </Card>
-          </section>
-
-          {/* Navike */}
-          {habits.length > 0 && (
-            <section>
-              <SectionTitle action={<a href="#/navike" className="text-xs text-accent">Sve</a>}>Nizovi</SectionTitle>
-              <Card className="px-4 py-2">
-                <ul className="divide-y divide-line">
-                  {habits.map((h) => (
-                    <li key={h.id} className="flex items-center gap-3 py-2">
-                      <Dot color={h.data.color} />
-                      <span className="flex-1 text-sm truncate">{h.data.alias || h.data.name}</span>
-                      <span className="text-sm font-semibold tabular">{streak(h.data)}</span>
-                      <span className="text-xs text-ink-faint">dana</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            </section>
-          )}
-
-          {/* Brza beleška */}
-          <section>
-            <SectionTitle action={<a href="#/beleske" className="text-xs text-accent">Sve beleške</a>}>Brza beleška</SectionTitle>
-            <div className="flex gap-2">
-              <input
-                className="flex-1"
-                placeholder="Ubaci misao, sredi kasnije…"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addNote()}
-              />
-              <Button variant="primary" onClick={addNote} disabled={!note.trim()} title="Sačuvaj">
-                <Send size={16} />
-              </Button>
-            </div>
-          </section>
-        </div>
+                    </div>
+                    <span className="text-xs tabular text-ink-faint shrink-0">{nextPeriod.from <= date ? 'u toku' : inDays(nextPeriod.from)}</span>
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        </Card>
       </div>
 
       <EventEditor open={adding} onClose={() => setAdding(false)} date={date} />

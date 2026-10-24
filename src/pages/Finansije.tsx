@@ -14,7 +14,7 @@ export default function Finansije({ param }: { param?: string }) {
   useEffect(() => ensureFinCats(), [])
   const tab: Tab = param === 'kategorije' ? 'kategorije' : 'pregled'
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title="Finansije"
         right={
@@ -79,90 +79,92 @@ function Overview() {
   for (const t of inMonth) groups.set(t.data.date, [...(groups.get(t.data.date) ?? []), t])
 
   return (
-    <div>
-      <QuickAdd cats={cats} />
+    <div className="lg:grid lg:grid-cols-[1fr_340px] gap-4 md:flex-1 md:min-h-0">
+      <div className="flex flex-col gap-3 min-h-0">
+        <QuickAdd cats={cats} />
 
-      <div className="flex items-center gap-1 mt-6 mb-3">
-        <IconButton title="Prethodni mesec" onClick={() => setMonth(shiftMonth(month, -1))}>
-          <ChevronLeft size={18} />
-        </IconButton>
-        <div className="font-semibold capitalize min-w-[130px] text-center">{monthLabel(month)}</div>
-        <IconButton title="Sledeći mesec" onClick={() => setMonth(shiftMonth(month, 1))}>
-          <ChevronRight size={18} />
-        </IconButton>
-        {month !== monthKey(today()) && (
-          <Button variant="ghost" onClick={() => setMonth(monthKey(today()))}>
-            Ovaj mesec
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center">
+            <IconButton title="Prethodni mesec" onClick={() => setMonth(shiftMonth(month, -1))}>
+              <ChevronLeft size={18} />
+            </IconButton>
+            <div className="font-semibold capitalize min-w-[120px] text-center text-sm">{monthLabel(month)}</div>
+            <IconButton title="Sledeći mesec" onClick={() => setMonth(shiftMonth(month, 1))}>
+              <ChevronRight size={18} />
+            </IconButton>
+          </div>
+          <Mini label="Zarađeno" value={fmtDin(income)} cls="text-emerald-600" />
+          <Mini label="Potrošeno" value={fmtDin(expense)} cls="text-rose-600" />
+          <Mini label="Razlika" value={fmtDin(income - expense, true)} cls={income - expense >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
+          <Mini label="Stanje" value={fmtDin(balance())} />
+          {!settings.balanceStart && (
+            <a href="#/podesavanja" className="text-[11px] text-accent">
+              upiši početno stanje
+            </a>
+          )}
+        </div>
+
+        <Card className="px-3 py-1 min-h-0 flex-1 overflow-y-auto">
+          {inMonth.length === 0 ? (
+            <Empty>Još ništa upisano za {monthLabel(month)}.</Empty>
+          ) : (
+            [...groups.entries()].map(([date, list]) => (
+              <div key={date} className="py-1.5">
+                <div className="text-[11px] text-ink-faint">{relDay(date)}</div>
+                <ul className="divide-y divide-line">
+                  {list.map((t) => {
+                    const c = t.data.categoryId ? catMap.get(t.data.categoryId) : undefined
+                    return (
+                      <li key={t.id} className="flex items-center gap-2.5 py-1.5 cursor-pointer hover:bg-paper-sunk/40 -mx-1 px-1 rounded" onClick={() => setEdit(t)}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c?.color ?? '#94a3b8' }} />
+                        <span className="flex-1 min-w-0 text-sm truncate first-letter:uppercase">{t.data.text || c?.name || '—'}</span>
+                        <span className="text-xs text-ink-faint hidden sm:inline">{c?.name ?? 'Bez kategorije'}</span>
+                        <span className={cx('text-sm font-medium tabular w-28 text-right', t.data.type === 'prihod' ? 'text-emerald-600' : 'text-ink')}>
+                          {t.data.type === 'prihod' ? '+' : '−'}
+                          {fmtDin(t.data.amount)}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))
+          )}
+        </Card>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="Zarađeno" value={fmtDin(income)} cls="text-emerald-600" />
-        <Stat label="Potrošeno" value={fmtDin(expense)} cls="text-rose-600" />
-        <Stat label="Razlika" value={fmtDin(income - expense, true)} cls={income - expense >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
-        <Stat label="Stanje ukupno" value={fmtDin(balance())} sub={settings.balanceStart ? undefined : 'Upiši početno stanje u Podešavanjima'} />
+      <div className="flex flex-col gap-3 mt-4 lg:mt-0 min-h-0 lg:overflow-y-auto">
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-2">Na šta trošim</div>
+          {expByCat.length === 0 ? <div className="text-xs text-ink-faint">Nema troškova.</div> : <CatBars rows={expByCat} total={expense} catMap={catMap} />}
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-2">Odakle zarađujem</div>
+          {incByCat.length === 0 ? <div className="text-xs text-ink-faint">Nema prihoda.</div> : <CatBars rows={incByCat} total={income} catMap={catMap} />}
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-1">Poslednjih 6 meseci</div>
+          <MonthBars series={series} active={month} onPick={setMonth} />
+        </Card>
       </div>
-
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        <section>
-          <SectionTitle>Na šta trošim</SectionTitle>
-          <Card className="p-4">
-            {expByCat.length === 0 ? <Empty>Nema troškova ovog meseca.</Empty> : <CatBars rows={expByCat} total={expense} catMap={catMap} />}
-          </Card>
-        </section>
-        <section>
-          <SectionTitle>Odakle zarađujem</SectionTitle>
-          <Card className="p-4">
-            {incByCat.length === 0 ? <Empty>Nema prihoda ovog meseca.</Empty> : <CatBars rows={incByCat} total={income} catMap={catMap} />}
-          </Card>
-        </section>
-      </div>
-
-      <SectionTitle>Poslednjih 6 meseci</SectionTitle>
-      <Card className="p-4 mb-6">
-        <MonthBars series={series} active={month} onPick={setMonth} />
-      </Card>
-
-      <SectionTitle>Sve stavke · {monthLabel(month)}</SectionTitle>
-      <Card className="px-4 py-1">
-        {inMonth.length === 0 ? (
-          <Empty>Još ništa upisano za ovaj mesec.</Empty>
-        ) : (
-          [...groups.entries()].map(([date, list]) => (
-            <div key={date} className="py-2">
-              <div className="text-xs text-ink-faint mb-1">{relDay(date)}</div>
-              <ul className="divide-y divide-line">
-                {list.map((t) => {
-                  const c = t.data.categoryId ? catMap.get(t.data.categoryId) : undefined
-                  return (
-                    <li key={t.id} className="flex items-center gap-3 py-2 cursor-pointer" onClick={() => setEdit(t)}>
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c?.color ?? '#94a3b8' }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate first-letter:uppercase">{t.data.text || c?.name || '—'}</div>
-                        <div className="text-xs text-ink-faint">{c?.name ?? 'Bez kategorije'}</div>
-                      </div>
-                      <span className={cx('text-sm font-medium tabular', t.data.type === 'prihod' ? 'text-emerald-600' : 'text-ink')}>
-                        {t.data.type === 'prihod' ? '+' : '−'}
-                        {fmtDin(t.data.amount)}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))
-        )}
-      </Card>
 
       <TxEditor tx={edit} cats={cats} onClose={() => setEdit(null)} />
     </div>
   )
 }
 
+function Mini({ label, value, cls }: { label: string; value: string; cls?: string }) {
+  return (
+    <div className="leading-tight">
+      <div className="text-[11px] text-ink-faint">{label}</div>
+      <div className={cx('text-sm font-semibold tabular', cls)}>{value}</div>
+    </div>
+  )
+}
+
 function Stat({ label, value, cls, sub }: { label: string; value: string; cls?: string; sub?: string }) {
   return (
-    <Card className="p-4">
+    <Card className="p-3">
       <div className="text-xs text-ink-faint">{label}</div>
       <div className={cx('text-lg md:text-xl font-semibold tabular mt-0.5', cls)}>{value}</div>
       {sub && (
@@ -177,12 +179,12 @@ function Stat({ label, value, cls, sub }: { label: string; value: string; cls?: 
 function CatBars({ rows, total, catMap }: { rows: [string, number][]; total: number; catMap: Map<string, FinCategory> }) {
   const max = rows[0]?.[1] ?? 1
   return (
-    <ul className="space-y-2.5">
+    <ul className="space-y-1.5">
       {rows.map(([id, amt]) => {
         const c = catMap.get(id)
         return (
           <li key={id || 'none'}>
-            <div className="flex justify-between text-sm mb-1">
+            <div className="flex justify-between text-xs mb-0.5">
               <span className="flex items-center gap-2 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c?.color ?? '#94a3b8' }} />
                 <span className="truncate">{c?.name ?? 'Bez kategorije'}</span>
@@ -191,7 +193,7 @@ function CatBars({ rows, total, catMap }: { rows: [string, number][]; total: num
                 {fmtDin(amt)} <span className="text-ink-faint text-xs">· {Math.round((amt / total) * 100)}%</span>
               </span>
             </div>
-            <div className="h-2 rounded-full bg-paper-sunk overflow-hidden">
+            <div className="h-1.5 rounded-full bg-paper-sunk overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${(amt / max) * 100}%`, background: c?.color ?? '#94a3b8' }} />
             </div>
           </li>
@@ -203,10 +205,10 @@ function CatBars({ rows, total, catMap }: { rows: [string, number][]; total: num
 
 function MonthBars({ series, active, onPick }: { series: { mk: string; inc: number; exp: number }[]; active: string; onPick: (m: string) => void }) {
   const max = Math.max(1, ...series.flatMap((s) => [s.inc, s.exp]))
-  const H = 140
+  const H = 90
   return (
     <div>
-      <div className="flex items-end gap-2 md:gap-4" style={{ height: H + 24 }}>
+      <div className="flex items-end gap-1.5" style={{ height: H + 20 }}>
         {series.map((s) => (
           <button key={s.mk} onClick={() => onPick(s.mk)} className="flex-1 flex flex-col items-center gap-1 group">
             <div className="flex items-end gap-1 w-full justify-center" style={{ height: H }}>
@@ -227,7 +229,7 @@ function MonthBars({ series, active, onPick }: { series: { mk: string; inc: numb
           </button>
         ))}
       </div>
-      <div className="flex gap-4 text-xs text-ink-soft mt-2">
+      <div className="flex gap-4 text-[11px] text-ink-soft mt-1">
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Zarađeno
         </span>
@@ -273,8 +275,8 @@ function QuickAdd({ cats }: { cats: Item<FinCategory>[] }) {
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+    <Card className="p-3">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <Segmented<TxType>
           value={shownType}
           onChange={(v) => {
@@ -306,7 +308,7 @@ function QuickAdd({ cats }: { cats: Item<FinCategory>[] }) {
           <Plus size={16} /> Upiši
         </Button>
       </div>
-      <div className="flex flex-wrap gap-1.5 mt-3">
+      <div className="flex flex-wrap gap-1 mt-2">
         {list.map((c) => (
           <button
             key={c.id}
@@ -315,7 +317,7 @@ function QuickAdd({ cats }: { cats: Item<FinCategory>[] }) {
               setCatId(c.id)
             }}
             className={cx(
-              'px-2.5 py-1 rounded-full text-sm border inline-flex items-center gap-1.5 transition',
+              'px-2 py-0.5 rounded-full text-xs border inline-flex items-center gap-1.5 transition',
               selected === c.id ? 'text-white border-transparent' : 'border-line text-ink-soft hover:bg-paper-sunk',
             )}
             style={selected === c.id ? { background: c.data.color } : undefined}
@@ -325,7 +327,7 @@ function QuickAdd({ cats }: { cats: Item<FinCategory>[] }) {
           </button>
         ))}
       </div>
-      <div className="text-xs mt-3 min-h-[1rem]">
+      <div className="text-xs mt-2 min-h-[1rem]">
         {flash ? (
           <span className="text-emerald-600">Upisano: {flash}</span>
         ) : parsed.amount ? (
@@ -431,7 +433,7 @@ function Categories() {
         : { data: { name: '', type, color: '#3b82f6', keywords: [], order: cats.length + 1 }, kw: '' },
     )
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid lg:grid-cols-2 gap-4">
       {(['trosak', 'prihod'] as TxType[]).map((type) => (
         <section key={type}>
           <SectionTitle
@@ -448,7 +450,7 @@ function Categories() {
               {cats
                 .filter((c) => c.data.type === type)
                 .map((c) => (
-                  <li key={c.id} className="flex items-center gap-3 py-2.5">
+                  <li key={c.id} className="flex items-center gap-3 py-1.5">
                     <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c.data.color }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm">{c.data.name}</div>

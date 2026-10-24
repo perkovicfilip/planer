@@ -58,7 +58,7 @@ export default function Lista() {
         </Button>
       </div>
 
-      <Card className="p-4 mb-6">
+      <Card className="p-3 mb-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             className="flex-1"
@@ -74,7 +74,7 @@ export default function Lista() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4">
         <section>
           <SectionTitle>Na listi · {todo.length}</SectionTitle>
           <Card className="px-4 py-1">
@@ -83,7 +83,7 @@ export default function Lista() {
             ) : (
               <ul className="divide-y divide-line">
                 {todo.map((m) => (
-                  <li key={m.id} className="flex items-center gap-3 py-2.5">
+                  <li key={m.id} className="flex items-center gap-3 py-1.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">{m.data.title}</div>
                       {(m.data.recommendedBy || m.data.note) && (
@@ -114,7 +114,7 @@ export default function Lista() {
             ) : (
               <ul className="divide-y divide-line">
                 {done.map((m) => (
-                  <li key={m.id} className="flex items-center gap-3 py-2.5">
+                  <li key={m.id} className="flex items-center gap-3 py-1.5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm">{m.data.title}</div>
                       <div className="text-xs text-ink-faint">{m.data.doneOn ? fmtShort(m.data.doneOn) : ''}</div>
@@ -136,7 +136,7 @@ export default function Lista() {
           <div className="text-center py-4">
             <div className="text-2xl font-semibold">{pick.data.title}</div>
             {pick.data.recommendedBy && <div className="text-sm text-ink-soft mt-1">preporuka: {pick.data.recommendedBy}</div>}
-            <div className="flex justify-center gap-2 mt-6">
+            <div className="flex justify-center gap-2 mt-4">
               <Button onClick={random}>
                 <Shuffle size={15} /> Drugo
               </Button>

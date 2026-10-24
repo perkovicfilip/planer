@@ -120,13 +120,13 @@ function Session({ date }: { date: string }) {
         </IconButton>
       </div>
 
-      <Card className="p-5 mb-5">
+      <Card className="p-3 mb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-xs text-ink-faint">
               {day.activity === 'odmor' ? 'Dan odmora' : `${day.time}–${fromMin(toMin(day.time) + day.duration)}`}
             </div>
-            <div className="text-xl font-semibold">{log?.data.title ?? workoutTitle(day)}</div>
+            <div className="text-lg font-semibold">{log?.data.title ?? workoutTitle(day)}</div>
             {day.activity === 'teretana' && (
               <button className="text-xs text-accent mt-1" onClick={() => setChooseWorkout(true)}>
                 Promeni trening za danas
@@ -158,27 +158,32 @@ function Session({ date }: { date: string }) {
               Ovaj dan nema šablon treninga. Napravi ga u „Treninzi“ i dodeli u „Nedelja“, ili dodaj vežbe ručno.
             </Empty>
           )}
-          <div className="space-y-3">
+          <div className="grid lg:grid-cols-2 gap-2">
             {order.map((exId) => {
               const target = workout?.data.exercises.find((e) => e.exerciseId === exId)
               const sets = setsOf(exId)
               const last = lastSetsFor(exId, date)
               return (
-                <Card key={exId} className="p-4">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="font-medium">{exName(exId)}</div>
-                    {target && (
-                      <div className="text-xs text-ink-faint tabular whitespace-nowrap">
-                        {target.sets} × {target.reps}
-                      </div>
-                    )}
+                <Card key={exId} className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-sm leading-tight">{exName(exId)}</div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {target && (
+                        <span className="text-xs text-ink-faint tabular whitespace-nowrap">
+                          {target.sets} × {target.reps}
+                        </span>
+                      )}
+                      <Button variant="soft" className="py-0.5 px-2 text-xs" onClick={() => addSet(exId)}>
+                        <Plus size={13} /> Serija
+                      </Button>
+                    </div>
                   </div>
                   {last.length > 0 && (
                     <div className="text-xs text-ink-faint mt-0.5">
                       Prošli put: {last.map((s) => `${s.kg ?? '—'}×${s.reps ?? '—'}`).join(', ')}
                     </div>
                   )}
-                  <div className="mt-3 space-y-2">
+                  <div className={sets.length ? 'mt-2 space-y-1' : ''}>
                     {sets.map(({ s, i }, n) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="w-6 text-xs text-ink-faint tabular">{n + 1}.</span>
@@ -191,9 +196,6 @@ function Session({ date }: { date: string }) {
                       </div>
                     ))}
                   </div>
-                  <Button variant="ghost" className="mt-2 -ml-2" onClick={() => addSet(exId)}>
-                    <Plus size={15} /> Serija
-                  </Button>
                 </Card>
               )
             })}
@@ -291,7 +293,7 @@ function WorkoutChooser({ open, onClose, onPick }: { open: boolean; onClose: () 
       {workouts.length === 0 && <Empty>Nema šablona treninga.</Empty>}
       <div className="space-y-1">
         {workouts.map((w) => (
-          <button key={w.id} onClick={() => onPick(w)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-paper-sunk">
+          <button key={w.id} onClick={() => onPick(w)} className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-paper-sunk">
             <div className="font-medium">{w.data.name}</div>
             <div className="text-xs text-ink-faint">{w.data.exercises.length} vežbi</div>
           </button>
@@ -319,7 +321,7 @@ function WeekPlanEditor() {
       </p>
       <Card className="divide-y divide-line">
         {plan.days.map((d, i) => (
-          <div key={i} className="p-4 flex flex-wrap items-center gap-2">
+          <div key={i} className="p-3 flex flex-wrap items-center gap-2">
             <div className="w-28 font-medium">{DAYS_LONG[i]}</div>
             <Segmented<DayActivity>
               value={d.activity}
@@ -374,7 +376,7 @@ function Workouts() {
   const [exEdit, setExEdit] = useState<{ id?: string; data: ExerciseData } | null>(null)
   const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? '?'
   return (
-    <div className="lg:grid lg:grid-cols-[1fr_320px] gap-6">
+    <div className="lg:grid lg:grid-cols-[1fr_320px] gap-4">
       <div>
         <SectionTitle
           action={
@@ -388,7 +390,7 @@ function Workouts() {
         {workouts.length === 0 && <Empty>Nema treninga. Napravi npr. „Upper A“.</Empty>}
         <div className="grid sm:grid-cols-2 gap-3">
           {workouts.map((w) => (
-            <Card key={w.id} className="p-4 cursor-pointer hover:border-ink-faint" onClick={() => setEdit(w.id)}>
+            <Card key={w.id} className="p-3 cursor-pointer hover:border-ink-faint" onClick={() => setEdit(w.id)}>
               <div className="font-medium mb-1">{w.data.name}</div>
               <ul className="text-sm text-ink-soft space-y-0.5">
                 {w.data.exercises.map((e, i) => (
@@ -404,7 +406,7 @@ function Workouts() {
           ))}
         </div>
       </div>
-      <div className="mt-6 lg:mt-0">
+      <div className="mt-4 lg:mt-0">
         <SectionTitle
           action={
             <Button variant="ghost" onClick={() => setExEdit({ data: { name: '' } })}>
@@ -608,18 +610,18 @@ function Progress() {
   return (
     <div>
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <Card className="p-4">
+        <Card className="p-3">
           <div className="text-xs text-ink-faint">Poslednjih 30 dana</div>
-          <div className="text-2xl font-semibold tabular">{last30.length}</div>
+          <div className="text-lg font-semibold tabular">{last30.length}</div>
           <div className="text-xs text-ink-faint">treninga</div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-3">
           <div className="text-xs text-ink-faint">Teretana</div>
-          <div className="text-2xl font-semibold tabular">{last30.filter((l) => l.data.type === 'teretana').length}</div>
+          <div className="text-lg font-semibold tabular">{last30.filter((l) => l.data.type === 'teretana').length}</div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-3">
           <div className="text-xs text-ink-faint">Plivanje</div>
-          <div className="text-2xl font-semibold tabular">{last30.filter((l) => l.data.type === 'plivanje').length}</div>
+          <div className="text-lg font-semibold tabular">{last30.filter((l) => l.data.type === 'plivanje').length}</div>
         </Card>
       </div>
       <SectionTitle>Najveća kilaža po treningu</SectionTitle>
@@ -638,13 +640,13 @@ function Progress() {
               </button>
             ))}
           </div>
-          <Card className="p-4">
+          <Card className="p-3">
             <LineChart points={points} unit=" kg" color="#10b981" />
           </Card>
         </>
       )}
       <SectionTitle>
-        <span className="block mt-6">Istorija</span>
+        <span className="block mt-4">Istorija</span>
       </SectionTitle>
       <Card className="px-4 py-1">
         {done.length === 0 ? (
@@ -652,7 +654,7 @@ function Progress() {
         ) : (
           <ul className="divide-y divide-line">
             {[...done].reverse().slice(0, 40).map((l) => (
-              <li key={l.id} className="flex items-center py-2.5 text-sm cursor-pointer" onClick={() => go('trening', l.data.date)}>
+              <li key={l.id} className="flex items-center py-1.5 text-sm cursor-pointer" onClick={() => go('trening', l.data.date)}>
                 <span className="w-24 text-ink-soft">{fmtShort(l.data.date)}</span>
                 <span className="flex-1">{l.data.title}</span>
                 <span className="text-xs text-ink-faint">{l.data.sets.length ? `${l.data.sets.length} serija` : l.data.note ?? ''}</span>

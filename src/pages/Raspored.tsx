@@ -85,7 +85,7 @@ export default function Raspored() {
           {Object.entries(RASPORED_SUBJECTS).map(([key, info]) => {
             const s = byKey.get(key)
             return (
-              <li key={key} className="py-3 flex flex-wrap items-center gap-3">
+              <li key={key} className="py-2 flex flex-wrap items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: colorOf(key) }} />
                 <span className="flex-1 min-w-[160px] text-sm font-medium">{info.name}</span>
                 {s ? (

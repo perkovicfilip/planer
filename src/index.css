@@ -52,6 +52,12 @@ body,
   height: 100%;
 }
 
+@media (min-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 body {
   @apply bg-paper text-ink font-sans antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -81,7 +87,7 @@ body {
 input,
 select,
 textarea {
-  @apply bg-paper-raised border border-line rounded-lg px-3 py-2 text-ink outline-none;
+  @apply bg-paper-raised border border-line rounded-lg px-2.5 py-1.5 text-ink outline-none;
 }
 input:focus,
 select:focus,

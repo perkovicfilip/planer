@@ -39,58 +39,79 @@ export default function Predmeti() {
           </Button>
         }
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Stat label="ESPB" value={`${st.espb} / ${st.total}`}>
-          <Progress value={st.espb} max={st.total} />
-        </Stat>
-        <Stat label="Prosek" value={st.average ? st.average.toFixed(2) : '—'} />
-        <Stat label="Preostalo predmeta" value={String(st.remaining)} />
-        <Stat label="Preostalo ESPB (na spisku)" value={String(st.remainingEspb)} />
+      <div className="flex flex-wrap gap-x-6 gap-y-2 items-center mb-3 text-sm">
+        <div className="flex items-center gap-2 min-w-[200px]">
+          <span className="text-ink-faint">ESPB</span>
+          <b className="tabular">
+            {st.espb}/{st.total}
+          </b>
+          <div className="w-24">
+            <Progress value={st.espb} max={st.total} height={6} />
+          </div>
+        </div>
+        <div>
+          <span className="text-ink-faint">Prosek </span>
+          <b className="tabular">{st.average ? st.average.toFixed(2) : '—'}</b>
+        </div>
+        <div>
+          <span className="text-ink-faint">Ostalo </span>
+          <b className="tabular">{st.remaining}</b>
+          <span className="text-ink-faint"> predmeta · {st.remainingEspb} ESPB</span>
+        </div>
       </div>
 
-      <SectionTitle>Nepoloženi</SectionTitle>
-      {open.length === 0 ? (
-        <Empty>Nema predmeta. Dodaj ih ili uvezi u Podešavanjima.</Empty>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-3 mb-8">
-          {open.map((s) => (
-            <Card key={s.id} className="p-4">
-              <div className="flex items-start gap-3">
-                <span className="w-3 h-3 rounded-full mt-1.5 shrink-0" style={{ background: catColor(s.data.categoryId) }} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium leading-snug">{s.data.name}</div>
-                  <div className="text-xs text-ink-faint mt-0.5">
-                    {s.data.code} · {s.data.espb} ESPB · {s.data.year}. godina · {s.data.mode}
-                  </div>
-                  {s.data.professor && <div className="text-xs text-ink-faint">{s.data.professor}</div>}
-                  {s.data.rasporedKey && (
-                    <div className="text-xs text-ink-soft mt-1">
-                      Raspored: grupa {s.data.group ?? '1'} ·{' '}
-                      {[s.data.attendLectures && 'predavanja', s.data.attendExercises && 'vežbe'].filter(Boolean).join(' + ') || 'ne dolazim'}
-                    </div>
-                  )}
-                </div>
-                <IconButton title="Izmeni" onClick={() => setEdit(s.id)}>
-                  <Pencil size={15} />
-                </IconButton>
-              </div>
-              <div className="flex gap-2 mt-3">
-                <Button className="flex-1" onClick={() => setGrading(s.id)}>
-                  Položio sam ✓
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      <Card className="overflow-hidden mb-4">
+        {open.length === 0 ? (
+          <Empty>Nema predmeta. Dodaj ih ili uvezi u Podešavanjima.</Empty>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint border-b border-line">
+                  <th className="font-semibold px-3 py-2">Predmet</th>
+                  <th className="font-semibold px-2 py-2 text-right">ESPB</th>
+                  <th className="font-semibold px-2 py-2 text-center">God.</th>
+                  <th className="font-semibold px-2 py-2 hidden md:table-cell">Status</th>
+                  <th className="px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {open.map((s) => (
+                  <tr key={s.id} className="hover:bg-paper-sunk/40">
+                    <td className="px-3 py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: catColor(s.data.categoryId) }} />
+                        <span className="font-medium">{s.data.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular">{s.data.espb}</td>
+                    <td className="px-2 py-1.5 text-center tabular text-ink-soft">{s.data.year}.</td>
+                    <td className="px-2 py-1.5 text-xs text-ink-faint hidden md:table-cell">{s.data.mode}</td>
+                    <td className="px-2 py-1 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Button variant="ghost" className="py-0.5 text-xs" onClick={() => setGrading(s.id)}>
+                          Položio ✓
+                        </Button>
+                        <IconButton title="Izmeni" onClick={() => setEdit(s.id)} className="w-7 h-7">
+                          <Pencil size={13} />
+                        </IconButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {passed.length > 0 && (
         <>
           <SectionTitle>Položeni u aplikaciji</SectionTitle>
-          <Card className="px-4 py-1 mb-6">
+          <Card className="px-3 py-1 mb-4">
             <ul className="divide-y divide-line">
               {passed.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 py-2.5">
+                <li key={s.id} className="flex items-center gap-3 py-1.5">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: catColor(s.data.categoryId) }} />
                   <span className="flex-1 text-sm">{s.data.name}</span>
                   <span className="text-sm font-semibold tabular">{s.data.grade ?? '—'}</span>
@@ -115,7 +136,7 @@ export default function Predmeti() {
 
 function Stat({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
   return (
-    <Card className="p-4">
+    <Card className="p-3">
       <div className="text-xs text-ink-faint">{label}</div>
       <div className="text-xl font-semibold tabular mt-0.5">{value}</div>
       {children && <div className="mt-2">{children}</div>}
