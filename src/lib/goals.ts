@@ -38,11 +38,7 @@ export function goalProgress(g: GoalData): { current: number | null; pct: number
     const w = latestWeight()
     current = w?.kg ?? null
     if (g.start === undefined) {
-      const first = store
-        .list<WeightData>('weight')
-        .map((x) => x.data)
-        .sort((a, b) => a.date.localeCompare(b.date))[0]
-      start = first?.kg ?? current ?? 0
+      start = bulkStartWeight()?.kg ?? current ?? 0
     }
   } else if (g.type === 'espb') {
     current = espbStats().espb
@@ -71,4 +67,14 @@ export function espbInApp(): number {
     .list<SubjectData>('subject')
     .filter((x) => x.data.status === 'polozen')
     .reduce((a, x) => a + (x.data.espb || 0), 0)
+}
+
+/** Kilaža na dan početka (prvo merenje tog dana ili posle njega). */
+export function bulkStartWeight(): WeightData | undefined {
+  const from = getSettings().bulkStart || '2026-11-01'
+  const all = store
+    .list<WeightData>('weight')
+    .map((x) => x.data)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  return all.find((w) => w.date >= from) ?? undefined
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Copy, Plus, Star, Trash2, ArrowUp, ArrowDown, Pencil, Search } from 'lucide-react'
 import { store, uid, useKind, useVersion } from '../lib/store'
-import type { FoodData, Meal, MealDayData, MealSlot, WeightData } from '../lib/types'
+import type { FoodData, GoalData, Meal, MealDayData, MealSlot, WeightData } from '../lib/types'
 import { addDays, fmtShort, relDay, timeOf, today, fromMin } from '../lib/dates'
 import {
   ensureMealDay,
@@ -19,6 +19,8 @@ import {
 import { go } from '../lib/router'
 import { Button, Card, CheckCircle, Empty, Field, IconButton, LineChart, Modal, PageHeader, Progress, SectionTitle, Segmented, cx } from '../ui/kit'
 import { EatenPicker } from '../ui/EatenPicker'
+import { WeightChart } from '../ui/WeightChart'
+import { bulkStartWeight } from '../lib/goals'
 
 type Tab = 'plan' | 'lista' | 'kilaza'
 
@@ -100,9 +102,6 @@ function Plan({ date }: { date: string }) {
             Danas
           </Button>
         )}
-        <Button className="ml-auto" onClick={() => setCopyOpen(true)}>
-          <Copy size={15} /> Kopiraj
-        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3 mb-5">
@@ -114,7 +113,7 @@ function Plan({ date }: { date: string }) {
             </span>
           </div>
           <div className="mt-2">
-            <Progress value={eaten.kcal} max={settings.kcalGoal} color="#f59e0b" height={10} />
+            <Progress value={eaten.kcal} max={settings.kcalGoal} color={goalColor(eaten.kcal / settings.kcalGoal)} height={10} />
           </div>
           <div className="text-xs text-ink-faint mt-1.5">Planirano {planned.kcal} kcal</div>
         </Card>
@@ -126,57 +125,65 @@ function Plan({ date }: { date: string }) {
             </span>
           </div>
           <div className="mt-2">
-            <Progress value={eaten.protein} max={settings.proteinGoal} color="#e11d48" height={10} />
+            <Progress value={eaten.protein} max={settings.proteinGoal} color={goalColor(eaten.protein / settings.proteinGoal)} height={10} />
           </div>
           <div className="text-xs text-ink-faint mt-1.5">Planirano {planned.protein} g</div>
         </Card>
       </div>
 
       <SectionTitle>Obroci</SectionTitle>
-      <Card className="px-4 py-1 mb-3">
-        {meals.length === 0 ? (
+      {meals.length === 0 ? (
+        <Card className="mb-3">
           <Empty>Nema obroka za ovaj dan.</Empty>
-        ) : (
-          <ul className="divide-y divide-line">
-            {meals.map((m, i) => {
-              const remind = mealRemindAt(exp[i], m, settings)
-              return (
-                <li key={m.id} className="flex items-center gap-3 py-2">
-                  <CheckCircle
-                    done={!!m.eatenAt}
-                    color="#f59e0b"
-                    onClick={() => (m.eatenAt ? setMealEaten(date, m.id, null) : setPick(m))}
-                  />
-                  <div className={cx('flex-1 min-w-0', m.eatenAt && 'opacity-50')}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{m.name}</span>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 mb-3">
+          {meals.map((m, i) => {
+            const remind = mealRemindAt(exp[i], m, settings)
+            const eatenNow = !!m.eatenAt
+            return (
+              <div
+                key={m.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => (eatenNow ? setMealEaten(date, m.id, null) : setPick(m))}
+                onKeyDown={(e) => e.key === 'Enter' && (eatenNow ? setMealEaten(date, m.id, null) : setPick(m))}
+                className={cx(
+                  'meal-card group relative rounded-xl border-2 px-4 py-3 cursor-pointer transition select-none',
+                  eatenNow ? 'meal-done' : 'meal-todo',
+                )}
+                title={eatenNow ? 'Klikni da poništiš' : 'Klikni kad pojedeš'}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-base leading-snug truncate">{m.name}</div>
+                    <div className="text-sm tabular mt-0.5 opacity-80">
+                      {m.kcal} kcal · {m.protein} g
                     </div>
-                    <div className="text-xs text-ink-faint tabular">
-                      {m.kcal} kcal · {m.protein} g proteina
-                      {m.eatenAt
-                        ? ` · pojeo u ${timeOf(m.eatenAt)}`
+                    <div className="text-xs mt-1 opacity-70">
+                      {eatenNow
+                        ? `✓ Pojedeno u ${timeOf(m.eatenAt!)}`
                         : m.time
-                          ? ` · planirano u ${m.time}${remind !== null ? ` · podsetnik ${fromMin(remind)}` : ''}`
-                          : ''}
+                          ? `Planirano u ${m.time}${remind !== null ? ` · podsetnik ${fromMin(remind)}` : ''}`
+                          : 'Nije pojedeno'}
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <IconButton title="Gore" onClick={() => move(i, -1)} className="hidden sm:grid">
-                      <ArrowUp size={15} />
-                    </IconButton>
-                    <IconButton title="Dole" onClick={() => move(i, 1)} className="hidden sm:grid">
-                      <ArrowDown size={15} />
-                    </IconButton>
-                    <IconButton title="Izmeni" onClick={() => setEditing(m)}>
-                      <Pencil size={15} />
-                    </IconButton>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </Card>
+                  <button
+                    aria-label="Izmeni obrok"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditing(m)
+                    }}
+                    className="w-7 h-7 grid place-items-center rounded-md opacity-60 hover:opacity-100 hover:bg-black/5"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
       <Button variant="primary" onClick={() => setAdding(true)}>
         <Plus size={16} /> Dodaj obrok
       </Button>
@@ -203,7 +210,6 @@ function Plan({ date }: { date: string }) {
           setPick(null)
         }}
       />
-      <CopyDay open={copyOpen} onClose={() => setCopyOpen(false)} target={date} />
     </div>
   )
 }
@@ -564,8 +570,12 @@ function FoodLibrary() {
 
 function Weight() {
   const weights = useKind<WeightData>('weight').sort((a, b) => a.data.date.localeCompare(b.data.date))
+  const goals = useKind<GoalData>('goal')
+  const [settings, setSettings] = useSettings()
   const [kg, setKg] = useState('')
   const [date, setDate] = useState(today())
+  const [tKg, setTKg] = useState('')
+  const [tDate, setTDate] = useState(addDays(settings.bulkStart || today(), 180))
   const save = () => {
     const v = Number(kg.replace(',', '.'))
     if (!v) return
@@ -574,37 +584,92 @@ function Weight() {
     else store.put<WeightData>('weight', { date, kg: v })
     setKg('')
   }
+  const kgGoal = goals.find((g) => g.data.type === 'kg')
+  const startDate = settings.bulkStart || '2026-11-01'
+  const start = bulkStartWeight()
   const last = weights[weights.length - 1]
-  const first = weights[0]
+  const target = kgGoal?.data.target ?? null
+  const left = target !== null && last ? +(target - last.data.kg).toFixed(1) : null
+
+  const setGoal = () => {
+    const v = Number(tKg.replace(',', '.'))
+    if (!v) return
+    if (kgGoal) store.update<GoalData>(kgGoal.id, (d) => ({ ...d, target: v, deadline: tDate }))
+    else store.put<GoalData>('goal', { title: 'Kilaža', type: 'kg', target: v, deadline: tDate, order: goals.length + 1, color: '#16a34a' })
+    setTKg('')
+  }
+
   return (
-    <div className="lg:grid lg:grid-cols-[1fr_260px] gap-4 md:flex-1 md:min-h-0">
-      <Card className="p-3 mb-4 lg:mb-0 flex flex-col">
-        {last && (
-          <div className="text-sm text-ink-soft mb-2">
-            Poslednje: <b className="text-ink">{last.data.kg} kg</b> ({fmtShort(last.data.date)})
-            {first && first.id !== last.id && (
-              <>
+    <div className="lg:grid lg:grid-cols-[1fr_280px] gap-4 md:flex-1 md:min-h-0">
+      <Card className="p-3 mb-4 lg:mb-0 flex flex-col min-h-[360px]">
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-2">
+          <span>
+            <span className="text-ink-faint">Početak </span>
+            <b className="text-[#2563eb]">{start ? `${start.kg} kg` : '—'}</b>
+            <span className="text-ink-faint"> ({fmtShort(startDate)})</span>
+          </span>
+          <span>
+            <span className="text-ink-faint">Sada </span>
+            <b>{last ? `${last.data.kg} kg` : '—'}</b>
+            {start && last && last.data.date >= startDate && (
+              <b className={last.data.kg >= start.kg ? 'text-emerald-600' : 'text-rose-600'}>
                 {' '}
-                · od početka{' '}
-                <b className={last.data.kg >= first.data.kg ? 'text-emerald-600' : 'text-rose-600'}>
-                  {last.data.kg >= first.data.kg ? '+' : ''}
-                  {(last.data.kg - first.data.kg).toFixed(1)} kg
-                </b>
-              </>
+                ({last.data.kg >= start.kg ? '+' : ''}
+                {(last.data.kg - start.kg).toFixed(1)})
+              </b>
             )}
-          </div>
-        )}
-        <LineChart points={weights.slice(-60).map((w) => ({ x: fmtShort(w.data.date), y: w.data.kg }))} unit=" kg" color="#2563eb" height={440} ticks={6} />
+          </span>
+          <span>
+            <span className="text-ink-faint">Cilj </span>
+            <b className="text-emerald-600">{target !== null ? `${target} kg` : '—'}</b>
+            {kgGoal?.data.deadline && <span className="text-ink-faint"> do {fmtShort(kgGoal.data.deadline)}</span>}
+          </span>
+          {left !== null && (
+            <span>
+              <span className="text-ink-faint">Još </span>
+              <b>{left > 0 ? `${left} kg` : 'cilj dostignut 🎉'}</b>
+            </span>
+          )}
+        </div>
+        <div className="flex-1 min-h-0">
+          <WeightChart
+            weights={weights.map((w) => w.data)}
+            startDate={startDate}
+            startKg={start?.kg ?? null}
+            targetKg={target}
+            targetDate={kgGoal?.data.deadline ?? null}
+          />
+        </div>
       </Card>
       <div className="flex flex-col gap-3 min-h-0">
         <Card className="p-3">
-          <div className="flex gap-2">
-            <input inputMode="decimal" className="w-24" placeholder="kg" value={kg} onChange={(e) => setKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
-            <input type="date" className="flex-1 min-w-0" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="text-xs font-semibold mb-1.5">Nova kilaža</div>
+          <div className="flex flex-col gap-2">
+            <input inputMode="decimal" className="w-full" placeholder="kg" value={kg} onChange={(e) => setKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+            <input type="date" className="w-full" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <Button variant="primary" className="w-full mt-2" onClick={save}>
             Upiši kg
           </Button>
+        </Card>
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-1.5">Cilj i početak</div>
+          <div className="flex flex-col gap-2">
+            <input inputMode="decimal" className="w-full" placeholder={target !== null ? `cilj ${target} kg` : 'cilj kg'} value={tKg} onChange={(e) => setTKg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setGoal()} />
+            <input type="date" className="w-full" value={kgGoal?.data.deadline && !tKg ? kgGoal.data.deadline : tDate} onChange={(e) => setTDate(e.target.value)} />
+          </div>
+          <Button className="w-full mt-2" onClick={setGoal} disabled={!tKg.trim()}>
+            {kgGoal ? 'Promeni cilj' : 'Postavi cilj'}
+          </Button>
+          <label className="flex items-center justify-between gap-2 text-xs text-ink-soft mt-2">
+            Početak bulka
+            <input
+              type="date"
+              className="text-xs py-1"
+              value={startDate}
+              onChange={(e) => e.target.value && setSettings((x) => ({ ...x, bulkStart: e.target.value }))}
+            />
+          </label>
         </Card>
         <Card className="px-3 py-1 min-h-0 flex-1 overflow-y-auto">
           <ul className="divide-y divide-line">
@@ -622,4 +687,12 @@ function Weight() {
       </div>
     </div>
   )
+}
+
+/** Boja trake: crvena na početku, žuta na pola, zelena kad je cilj ispunjen. */
+export function goalColor(ratio: number): string {
+  const r = Math.max(0, ratio)
+  if (r >= 1) return 'hsl(135 65% 40%)' // cilj ispunjen — zelena
+  const hue = Math.round(48 * Math.pow(r, 1.4)) // crvena → narandžasta → žuta
+  return `hsl(${hue} 80% 50%)`
 }

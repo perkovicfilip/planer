@@ -109,3 +109,18 @@ input[type='color'] {
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
+
+/* Kartice obroka: crvena dok nije pojedeno, zelena kad jeste */
+.meal-todo {
+  background: color-mix(in srgb, #e11d48 8%, rgb(var(--paper-raised)));
+  border-color: color-mix(in srgb, #e11d48 45%, rgb(var(--paper-raised)));
+  color: rgb(var(--ink));
+}
+.meal-todo:hover {
+  border-color: #e11d48;
+}
+.meal-done {
+  background: color-mix(in srgb, #16a34a 14%, rgb(var(--paper-raised)));
+  border-color: color-mix(in srgb, #16a34a 60%, rgb(var(--paper-raised)));
+  color: rgb(var(--ink));
+}

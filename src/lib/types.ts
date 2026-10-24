@@ -197,6 +197,7 @@ export interface SettingsData {
   totalEspb: number
   balanceStart: number // stanje novca pre početka vođenja finansija
   uiSize: number // veličina slova u px (14–20)
+  bulkStart: string // datum početka praćenja kilaže (bulk)
   bedtime?: string // podsetnik za spavanje
   wakeTime?: string
   notifyObligations: boolean
@@ -216,6 +217,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   totalEspb: 240,
   balanceStart: 0,
   uiSize: 17,
+  bulkStart: '2026-11-01',
   bedtime: '21:30',
   wakeTime: '05:50',
   notifyObligations: true,
