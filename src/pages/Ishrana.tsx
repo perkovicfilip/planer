@@ -155,6 +155,7 @@ function Plan({ date }: { date: string }) {
                 title={eatenNow ? 'Klikni da poništiš' : 'Klikni kad pojedeš'}
               >
                 <div className="flex items-start gap-2">
+                  <span className="shrink-0 w-6 h-6 rounded-full grid place-items-center text-xs font-bold bg-black/10 dark:bg-white/10 mt-0.5">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-base leading-snug truncate">{m.name}</div>
                     <div className="text-sm tabular mt-0.5 opacity-80">
@@ -168,16 +169,42 @@ function Plan({ date }: { date: string }) {
                           : 'Nije pojedeno'}
                     </div>
                   </div>
-                  <button
-                    aria-label="Izmeni obrok"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing(m)
-                    }}
-                    className="w-7 h-7 grid place-items-center rounded-md opacity-60 hover:opacity-100 hover:bg-black/5"
-                  >
-                    <Pencil size={14} />
-                  </button>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <button
+                      aria-label="Izmeni obrok"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(m)
+                      }}
+                      className="w-7 h-7 grid place-items-center rounded-md opacity-60 hover:opacity-100 hover:bg-black/5"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <div className="flex opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        aria-label="Pomeri ranije"
+                        disabled={i === 0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          move(i, -1)
+                        }}
+                        className="w-6 h-6 grid place-items-center rounded hover:bg-black/5 disabled:opacity-20"
+                      >
+                        <ChevronLeft size={15} />
+                      </button>
+                      <button
+                        aria-label="Pomeri kasnije"
+                        disabled={i === meals.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          move(i, 1)
+                        }}
+                        className="w-6 h-6 grid place-items-center rounded hover:bg-black/5 disabled:opacity-20"
+                      >
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )
@@ -301,7 +328,7 @@ function AddMeal({ open, onClose, onAdd, planned }: { open: boolean; onClose: ()
       footer={
         <>
           <span className="mr-auto text-sm text-ink-soft truncate">
-            {added.length ? `Dodato: ${added.join(', ')}` : 'Klikni na obroke koje hoćeš da dodaš.'}
+            {added.length ? `Dodato redom: ${added.map((a, i) => `${i + 1}. ${a}`).join(' · ')}` : 'Klikni na obroke redom kojim ćeš ih jesti — prvi kliknut je prvi obrok.'}
           </span>
           <Button variant="primary" onClick={close}>
             Gotovo
@@ -331,14 +358,18 @@ function AddMeal({ open, onClose, onAdd, planned }: { open: boolean; onClose: ()
       {list.length === 0 ? (
         <Empty>{foods.length ? 'Nema obroka koji odgovaraju pretrazi.' : 'Lista je prazna — klikni „Novi obrok“.'}</Empty>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
           {list.map((f) => {
             const n = countIn(f)
+            const pos = planned.map((m, i) => (m.foodId === f.id ? i + 1 : 0)).filter(Boolean)
             return (
               <button
                 key={f.id}
                 onClick={() => add(f)}
-                className="text-left rounded-xl border-2 border-line bg-paper-raised px-3 py-2.5 hover:border-accent hover:bg-accent-soft/40 transition active:scale-[0.98]"
+                className={cx(
+                  'relative text-left rounded-xl border-2 px-3 py-2 transition active:scale-[0.98]',
+                  n > 0 ? 'border-emerald-500/60 bg-emerald-500/5' : 'border-line bg-paper-raised hover:border-accent hover:bg-accent-soft/40',
+                )}
               >
                 <div className="flex items-start gap-1.5">
                   <span className="flex-1 font-semibold leading-snug">{f.data.name}</span>
@@ -347,7 +378,7 @@ function AddMeal({ open, onClose, onAdd, planned }: { open: boolean; onClose: ()
                 <div className="text-sm text-ink-soft tabular mt-0.5">
                   {f.data.kcal} kcal · {f.data.protein} g
                 </div>
-                {n > 0 && <div className="text-xs text-emerald-600 mt-0.5">✓ u planu{n > 1 ? ` ×${n}` : ''}</div>}
+                {n > 0 && <div className="text-xs text-emerald-600 mt-0.5">✓ u planu kao {pos.map((p) => `${p}.`).join(', ')}</div>}
               </button>
             )
           })}
