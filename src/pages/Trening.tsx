@@ -166,7 +166,7 @@ export default function Trening() {
       <ActivityStrip />
 
       <DayActivityModal key={openDay ? openDay.date + openDay.actId : 'none'} target={openDay} onClose={() => setOpenDay(null)} />
-      <Modal open={showSchedule} onClose={() => setShowSchedule(false)} wide tall={false} title="Podesi nedeljni raspored">
+      <Modal open={showSchedule} onClose={() => setShowSchedule(false)} wide tall={false} title="Nedeljni raspored po danima">
         <ActivitiesCard />
       </Modal>
       <Modal open={showWorkouts} onClose={() => setShowWorkouts(false)} wide tall={false} title="Moji treninzi">
@@ -189,11 +189,7 @@ function ActivitiesCard() {
     }))
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <div className="font-semibold">Raspored po danima</div>
-          <div className="text-xs text-ink-faint">Ponavlja se svake nedelje. Klikni na dan da ga uključiš ili isključiš.</div>
-        </div>
+      <div className="flex justify-end mb-2">
         <Button variant="primary" onClick={() => setEdit('new')}>
           <Plus size={15} /> Aktivnost
         </Button>
@@ -205,7 +201,6 @@ function ActivitiesCard() {
             <div className="flex items-center gap-2 mb-1">
               <span className="w-3 h-3 rounded-full" style={{ background: a.data.color }} />
               <span className="font-medium flex-1">{a.data.name}</span>
-              <span className="text-xs text-ink-faint">{a.data.days.length === 7 ? 'svaki dan' : `${a.data.days.length}× nedeljno`}</span>
               <IconButton title="Izmeni" onClick={() => setEdit(a)} className="w-7 h-7">
                 <Pencil size={13} />
               </IconButton>
