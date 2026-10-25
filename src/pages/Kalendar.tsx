@@ -98,7 +98,12 @@ function titleFor(date: string, mark?: DayMark, ftn = false) {
     const ms = MILESTONES.find((m) => m.date === date)
     if (ms) lines.push(ms.name)
   }
-  for (const e of mark?.events ?? []) lines.push(`• ${e.data.start ? e.data.start + ' ' : ''}${e.data.title}`)
+  for (const e of mark?.events ?? []) {
+    const cat = e.data.categoryId ? store.get<Category>(e.data.categoryId)?.data.name : undefined
+    const time = e.data.start ? `  ${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : ''
+    lines.push(`• ${e.data.title}${time}`)
+    if (cat && cat !== e.data.title) lines.push(`   ${cat}`)
+  }
   return lines.join('\n')
 }
 

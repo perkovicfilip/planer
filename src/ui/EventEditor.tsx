@@ -29,12 +29,14 @@ export function EventEditor({
   const [catId, setCatId] = useState('')
   const [from, setFrom] = useState(start ?? '')
   const [to, setTo] = useState('')
+  const [name, setName] = useState('')
 
   useEffect(() => {
     if (open) {
       setCatId('')
       setFrom(start ?? '')
       setTo('')
+      setName('')
     }
   }, [open, start, day])
 
@@ -48,7 +50,7 @@ export function EventEditor({
     const c = catMap.get(catId)
     if (!c) return
     store.put<EventData>('event', {
-      title: c.name,
+      title: name.trim() || c.name,
       categoryId: catId,
       date: day,
       start: from || undefined,
@@ -83,7 +85,10 @@ export function EventEditor({
             return (
               <div key={e.id} className="flex items-center gap-2.5 py-1.5">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c?.color ?? '#64748b' }} />
-                <span className="flex-1 truncate">{c?.name ?? e.data.title}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate font-medium">{e.data.title}</span>
+                  {c && c.name !== e.data.title && <span className="block truncate text-xs text-ink-faint">{c.name}</span>}
+                </span>
                 {e.data.start && (
                   <span className="text-sm text-ink-soft tabular">
                     {e.data.start}
@@ -111,6 +116,13 @@ export function EventEditor({
               </option>
             ))}
           </select>
+          <input
+            className="w-full mb-3"
+            placeholder="Naziv (opciono, npr. PZ1 i PZ2)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && add()}
+          />
           <div className="flex items-center gap-2">
             <span className="text-sm text-ink-soft w-6">Od</span>
             <input type="time" className="w-[8rem]" value={from} onChange={(e) => setFrom(e.target.value)} />
