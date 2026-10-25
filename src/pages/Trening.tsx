@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check, RotateCcw, X } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
 import type { ActivityData, ExerciseData, Item, LoggedSet, WorkoutData } from '../lib/types'
-import { DAYS_SHORT, addDays, fmtLong, iso, parse, today, weekStart, MONTHS_GEN } from '../lib/dates'
+import { DAYS_LONG, DAYS_SHORT, addDays, fmtLong, iso, parse, today, weekStart, MONTHS_GEN } from '../lib/dates'
 import {
   activitiesOn,
   dayState,
@@ -26,9 +26,11 @@ import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader,
 
 export default function Trening() {
   useVersion()
+  const acts = useKind<ActivityData>('activity').sort((a, b) => a.data.order - b.data.order)
   const [week, setWeek] = useState(weekStart(today()))
   const [openDay, setOpenDay] = useState<{ date: string; actId: string } | null>(null)
-  const [addTo, setAddTo] = useState<string | null>(null)
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [showWorkouts, setShowWorkouts] = useState(false)
   const days = Array.from({ length: 7 }, (_, i) => addDays(week, i))
   const end = addDays(week, 6)
   const label = (() => {
@@ -39,98 +41,137 @@ export default function Trening() {
       : `${a.getDate()}. ${MONTHS_GEN[a.getMonth()]} – ${b.getDate()}. ${MONTHS_GEN[b.getMonth()]}`
   })()
 
+  const addForDay = (date: string, actId: string) => {
+    const current = activitiesOn(date).map((a) => a.id)
+    // zadrži redosled kolona
+    const order = acts.map((a) => a.id).filter((id) => id === actId || current.includes(id))
+    setDayActivities(date, order)
+  }
+
   return (
     <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title="Trening"
         right={
           <>
-            <IconButton title="Prethodna nedelja" onClick={() => setWeek(addDays(week, -7))}>
-              <ChevronLeft size={18} />
-            </IconButton>
-            <span className="text-sm font-medium min-w-[150px] text-center">{label}</span>
-            <IconButton title="Sledeća nedelja" onClick={() => setWeek(addDays(week, 7))}>
-              <ChevronRight size={18} />
-            </IconButton>
-            {week !== weekStart(today()) && (
-              <Button variant="ghost" onClick={() => setWeek(weekStart(today()))}>
-                Ova nedelja
-              </Button>
-            )}
+            <Button onClick={() => setShowWorkouts(true)}>Moji treninzi</Button>
+            <Button onClick={() => setShowSchedule(true)}>Podesi raspored</Button>
           </>
         }
       />
 
-      <div className="md:flex-1 md:min-h-0 md:overflow-y-auto">
-        {/* Nedelja */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
-          {days.map((d, i) => {
-            const acts = activitiesOn(d)
-            const changed = isChanged(d)
-            const isToday = d === today()
-            return (
-              <Card key={d} className={cx('p-2 flex flex-col min-h-[150px]', isToday && 'ring-2 ring-accent')}>
-                <div className="flex items-baseline justify-between mb-1.5 px-1">
-                  <span className={cx('font-semibold', isToday && 'text-accent')}>{DAYS_SHORT[i]}</span>
-                  <span className="text-xs text-ink-faint">{parse(d).getDate()}.</span>
-                </div>
-                <div className="flex flex-col gap-1 flex-1">
-                  {acts.length === 0 && <div className="text-xs text-ink-faint px-1">Odmor</div>}
+      <div className="flex items-center gap-1 mb-2">
+        <IconButton title="Prethodna nedelja" onClick={() => setWeek(addDays(week, -7))}>
+          <ChevronLeft size={18} />
+        </IconButton>
+        <span className="text-sm font-semibold min-w-[160px] text-center">{label}</span>
+        <IconButton title="Sledeća nedelja" onClick={() => setWeek(addDays(week, 7))}>
+          <ChevronRight size={18} />
+        </IconButton>
+        {week !== weekStart(today()) && (
+          <Button variant="ghost" onClick={() => setWeek(weekStart(today()))}>
+            Ova nedelja
+          </Button>
+        )}
+      </div>
+
+      <div className="md:flex-1 md:min-h-0 overflow-auto">
+        {acts.length === 0 ? (
+          <Card>
+            <Empty>Nema aktivnosti — klikni „Podesi raspored“ i dodaj ih.</Empty>
+          </Card>
+        ) : (
+          <div
+            className="grid gap-1.5 min-w-[560px]"
+            style={{ gridTemplateColumns: `minmax(90px, 120px) repeat(${acts.length}, minmax(100px, 1fr))` }}
+          >
+            {/* zaglavlje */}
+            <div />
+            {acts.map((a) => (
+              <div key={a.id} className="flex items-center justify-center gap-1.5 py-1 font-semibold text-sm">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: a.data.color }} />
+                <span className="truncate">{a.data.name}</span>
+              </div>
+            ))}
+
+            {/* redovi = dani */}
+            {days.map((d, i) => {
+              const scheduled = new Set(activitiesOn(d).map((a) => a.id))
+              const isToday = d === today()
+              const past = d < today()
+              return (
+                <Fragment key={d}>
+                  <div className={cx('flex flex-col justify-center px-2 rounded-lg', isToday && 'bg-accent-soft')}>
+                    <span className={cx('font-semibold', isToday && 'text-accent')}>{DAYS_LONG[i]}</span>
+                    <span className="text-xs text-ink-faint">
+                      {parse(d).getDate()}. {MONTHS_GEN[parse(d).getMonth()]}
+                      {isChanged(d) && (
+                        <button onClick={() => resetDay(d)} className="ml-1 text-accent" title="Vrati podrazumevani raspored za ovaj dan">
+                          · vrati
+                        </button>
+                      )}
+                    </span>
+                  </div>
                   {acts.map((a) => {
+                    if (!scheduled.has(a.id))
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => addForDay(d, a.id)}
+                          title="Nije predviđeno — klikni da dodaš samo za ovaj dan"
+                          className="group h-14 rounded-xl border border-dashed border-line grid place-items-center text-ink-faint/60 hover:text-accent hover:border-accent"
+                        >
+                          <span className="text-xl leading-none group-hover:hidden">×</span>
+                          <span className="text-xs hidden group-hover:inline">+ dodaj</span>
+                        </button>
+                      )
                     const done = isDone(d, a.id)
                     const w = workoutFor(d, a)
                     return (
                       <div
                         key={a.id}
-                        className="group flex items-center gap-1.5 rounded-lg px-1.5 py-1 border-l-4"
-                        style={{
-                          borderColor: a.data.color,
-                          background: done ? 'color-mix(in srgb, #16a34a 16%, rgb(var(--paper-raised)))' : 'rgb(var(--paper-sunk))',
-                        }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleDone(d, a.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && toggleDone(d, a.id)}
+                        className={cx(
+                          'group relative h-14 rounded-xl border-2 flex flex-col items-center justify-center cursor-pointer select-none transition active:scale-[0.98]',
+                          done ? 'meal-done' : past ? 'meal-todo' : 'border-line bg-paper-raised hover:border-ink-faint',
+                        )}
+                        title={done ? 'Urađeno — klikni da poništiš' : 'Klikni kad uradiš'}
                       >
+                        <span className="text-sm font-semibold">{done ? '✓' : ''}</span>
+                        {w && <span className="text-xs text-ink-soft truncate max-w-full px-1">{w.data.name}</span>}
                         <button
-                          aria-label={done ? 'Poništi' : 'Urađeno'}
-                          onClick={() => toggleDone(d, a.id)}
-                          className={cx(
-                            'shrink-0 w-5 h-5 rounded-full border-2 grid place-items-center',
-                            done ? 'bg-emerald-600 border-emerald-600' : 'border-ink-faint',
-                          )}
+                          aria-label="Detalji"
+                          title="Detalji (vežbe, serije, izmena za ovaj dan)"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenDay({ date: d, actId: a.id })
+                          }}
+                          className="absolute top-1 right-1 w-6 h-6 grid place-items-center rounded-md text-ink-faint opacity-0 group-hover:opacity-100 hover:bg-black/5"
                         >
-                          {done && <Check size={12} strokeWidth={3} className="text-white" />}
-                        </button>
-                        <button onClick={() => setOpenDay({ date: d, actId: a.id })} className="flex-1 min-w-0 text-left leading-tight">
-                          <div className="text-sm font-medium break-words">{a.data.name}</div>
-                          {w && <div className="text-xs text-ink-soft break-words">{w.data.name}</div>}
+                          <Pencil size={12} />
                         </button>
                       </div>
                     )
                   })}
-                </div>
-                <div className="flex items-center justify-between mt-1.5 px-1">
-                  <button onClick={() => setAddTo(d)} className="text-xs text-accent inline-flex items-center gap-0.5">
-                    <Plus size={12} /> Dodaj
-                  </button>
-                  {changed && (
-                    <button onClick={() => resetDay(d)} className="text-xs text-ink-faint hover:text-ink inline-flex items-center gap-0.5" title="Vrati podrazumevani raspored">
-                      <RotateCcw size={11} /> vrati
-                    </button>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-4">
-          <ActivitiesCard />
-          <WorkoutsCard />
-        </div>
+                </Fragment>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <ActivityStrip />
 
       <DayActivityModal key={openDay ? openDay.date + openDay.actId : 'none'} target={openDay} onClose={() => setOpenDay(null)} />
-      <AddToDayModal date={addTo} onClose={() => setAddTo(null)} />
+      <Modal open={showSchedule} onClose={() => setShowSchedule(false)} wide tall={false} title="Podesi nedeljni raspored">
+        <ActivitiesCard />
+      </Modal>
+      <Modal open={showWorkouts} onClose={() => setShowWorkouts(false)} wide tall={false} title="Moji treninzi">
+        <WorkoutsCard />
+      </Modal>
     </div>
   )
 }
@@ -147,7 +188,7 @@ function ActivitiesCard() {
       days: x.days.includes(d) ? x.days.filter((y) => y !== d) : [...x.days, d].sort(),
     }))
   return (
-    <Card className="p-3">
+    <div>
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="font-semibold">Raspored po danima</div>
@@ -212,7 +253,7 @@ function ActivitiesCard() {
         ))}
       </div>
       <ActivityEditor item={edit} count={acts.length} onClose={() => setEdit(null)} />
-    </Card>
+    </div>
   )
 }
 
@@ -300,7 +341,7 @@ function WorkoutsCard() {
   const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? '?'
   const [edit, setEdit] = useState<string | 'new' | null>(null)
   return (
-    <Card className="p-3">
+    <div>
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="font-semibold">Moji treninzi</div>
@@ -311,7 +352,7 @@ function WorkoutsCard() {
         </Button>
       </div>
       {workouts.length === 0 && <Empty>Napravi npr. „Push“, „Pull“, „Legs“.</Empty>}
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {workouts.map((w) => (
           <button key={w.id} onClick={() => setEdit(w.id)} className="text-left rounded-lg border border-line p-2.5 hover:border-ink-faint">
             <div className="font-medium mb-1">{w.data.name}</div>
@@ -330,7 +371,7 @@ function WorkoutsCard() {
         ))}
       </div>
       <WorkoutEditor id={edit} onClose={() => setEdit(null)} count={workouts.length} />
-    </Card>
+    </div>
   )
 }
 
