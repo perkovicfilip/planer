@@ -17,14 +17,14 @@ interface DayMark {
   events: Item<EventData>[]
 }
 
-function useMarks(from: string, to: string, filter: string | null) {
+function useMarks(from: string, to: string, hidden: string[]) {
   const events = useKind<EventData>('event')
   const cats = useKind<Category>('category')
   return useMemo(() => {
     const catColor = new Map(cats.map((c) => [c.id, c.data.color]))
     const marks = new Map<string, DayMark>()
     for (const e of events) {
-      if (filter && e.data.categoryId !== filter) continue
+      if (e.data.categoryId && hidden.includes(e.data.categoryId)) continue
       const color = (e.data.categoryId && catColor.get(e.data.categoryId)) || '#64748b'
       const multi = !!e.data.endDate && e.data.endDate !== e.data.date
       let d = e.data.date > from ? e.data.date : from
@@ -46,7 +46,7 @@ function useMarks(from: string, to: string, filter: string | null) {
     for (const m of marks.values())
       m.events.sort((a, b) => (a.data.start || '99').localeCompare(b.data.start || '99'))
     return marks
-  }, [events, cats, from, to, filter])
+  }, [events, cats, from, to, hidden])
 }
 
 function circleBg(colors: string[]) {
@@ -202,7 +202,22 @@ function loadFtn(): boolean {
 export default function Kalendar({ param }: { param?: string }) {
   const [view, setView] = useState<View>(param === 'mesec' ? 'mesec' : 'godina')
   const [anchor, setAnchor] = useState(defaultAnchor)
-  const [filter, setFilter] = useState<string | null>(null)
+  const [hidden, setHiddenState] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('planer:skriveno') || '[]')
+    } catch {
+      return []
+    }
+  })
+  const setHidden = (v: string[]) => {
+    setHiddenState(v)
+    try {
+      localStorage.setItem('planer:skriveno', JSON.stringify(v))
+    } catch {
+      /* nije bitno */
+    }
+  }
+  const toggleHidden = (id: string) => setHidden(hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id])
   const [adding, setAdding] = useState<string | null>(null)
   const [ftn, setFtnState] = useState(loadFtn)
   const [newCat, setNewCat] = useState('')
@@ -226,7 +241,7 @@ export default function Kalendar({ param }: { param?: string }) {
   const from = iso(new Date(months[0].y, months[0].m, 1))
   const last = months[months.length - 1]
   const to = iso(new Date(last.y, last.m + 1, 0))
-  const marks = useMarks(from, to, filter)
+  const marks = useMarks(from, to, hidden)
 
   const shift = (dir: number) => {
     const step = view === 'godina' ? 6 : 1
@@ -244,7 +259,7 @@ export default function Kalendar({ param }: { param?: string }) {
     if (!confirm(evs.length ? `Obrisati „${name}“ i ${evs.length} upisa u kalendaru?` : `Obrisati „${name}“?`)) return
     for (const e of evs) store.remove(e.id)
     store.remove(id)
-    if (filter === id) setFilter(null)
+    if (hidden.includes(id)) setHidden(hidden.filter((x) => x !== id))
   }
 
   const addCat = () => {
@@ -318,12 +333,11 @@ export default function Kalendar({ param }: { param?: string }) {
             <div className="text-sm font-semibold mb-2">Događaji</div>
             {sortedCats.length > 0 && (
               <div className="space-y-0 mb-2">
-                <LegendRow active={filter === null} onClick={() => setFilter(null)} label="Sve" />
                 {sortedCats.map((c) => (
                   <LegendRow
                     key={c.id}
-                    active={filter === c.id}
-                    onClick={() => setFilter(filter === c.id ? null : c.id)}
+                    off={hidden.includes(c.id)}
+                    onClick={() => toggleHidden(c.id)}
                     label={c.data.name}
                     color={c.data.color}
                     onDelete={() => removeCat(c.id, c.data.name)}
@@ -365,10 +379,14 @@ export default function Kalendar({ param }: { param?: string }) {
   )
 }
 
-function LegendRow({ active, onClick, label, color, onDelete }: { active: boolean; onClick: () => void; label: string; color?: string; onDelete?: () => void }) {
+function LegendRow({ off, onClick, label, color, onDelete }: { off: boolean; onClick: () => void; label: string; color?: string; onDelete?: () => void }) {
   return (
-    <div className={cx('group flex items-center rounded-md', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
-      <button onClick={onClick} className="flex-1 min-w-0 flex items-center gap-2 px-1.5 py-0.5 text-sm text-left">
+    <div className="flex items-center rounded-md hover:bg-paper-sunk/60">
+      <button
+        onClick={onClick}
+        title={off ? 'Prikaži u kalendaru' : 'Sakrij iz kalendara'}
+        className={cx('flex-1 min-w-0 flex items-center gap-2 px-1.5 py-0.5 text-sm text-left', off && 'opacity-35 line-through')}
+      >
         {color && <Dot color={color} />}
         <span className="truncate">{label}</span>
       </button>
