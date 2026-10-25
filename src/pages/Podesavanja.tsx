@@ -16,7 +16,7 @@ const GROUPS: { v: CategoryGroup; label: string }[] = [
   { v: 'ostalo', label: 'Ostalo' },
 ]
 
-const KINDS: Kind[] = ['category', 'event', 'subject', 'habit', 'food', 'mealday', 'exercise', 'workout', 'workoutlog', 'weekplan', 'weight', 'goal', 'note', 'settings', 'meta', 'fincat', 'transaction', 'media', 'project']
+const KINDS: Kind[] = ['category', 'event', 'subject', 'habit', 'food', 'mealday', 'exercise', 'workout', 'workoutlog', 'weekplan', 'weight', 'goal', 'note', 'settings', 'meta', 'fincat', 'transaction', 'media', 'project', 'activity', 'actday']
 
 export default function Podesavanja() {
   const [s, setS] = useSettings()

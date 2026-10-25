@@ -18,6 +18,8 @@ export type Kind =
   | 'settings'
   | 'meta'
   | 'fincat'
+  | 'activity'
+  | 'actday'
   | 'transaction'
   | 'media'
   | 'project'
@@ -273,4 +275,23 @@ export interface ProjectData {
   tasks: ProjectTask[]
   notes?: string
   order: number
+}
+
+// ---------------- Fizičke aktivnosti ----------------
+
+export interface ActivityData {
+  name: string
+  color: string
+  days: number[] // podrazumevani dani u nedelji (0 = ponedeljak)
+  dayWorkouts?: Record<string, string> // dan -> id treninga (npr. sreda: Push)
+  usesWorkouts?: boolean // da li se za ovu aktivnost biraju treninzi sa vežbama
+  order: number
+}
+
+export interface ActDayData {
+  date: string
+  activities?: string[] // ako postoji: izmenjen raspored za taj dan
+  done: string[] // id-jevi urađenih aktivnosti
+  workouts?: Record<string, string> // aktivnost -> trening samo za taj dan
+  sets?: Record<string, LoggedSet[]> // aktivnost -> upisane serije
 }

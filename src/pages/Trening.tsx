@@ -1,231 +1,555 @@
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown, Pencil, Check, RotateCcw, X } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
-import type { DayActivity, ExerciseData, LoggedSet, WorkoutData, WorkoutLogData, WeekPlanDay } from '../lib/types'
-import { DAYS_LONG, addDays, fmtShort, relDay, today, fromMin, toMin } from '../lib/dates'
-import { planFor, useWeekPlan, workoutLogFor, workoutTitle } from '../lib/logic'
-import { go } from '../lib/router'
-import { Button, Card, Empty, Field, IconButton, LineChart, Modal, PageHeader, SectionTitle, Segmented, cx } from '../ui/kit'
+import type { ActivityData, ExerciseData, Item, LoggedSet, WorkoutData } from '../lib/types'
+import { DAYS_SHORT, addDays, fmtLong, iso, parse, today, weekStart, MONTHS_GEN } from '../lib/dates'
+import {
+  activitiesOn,
+  dayState,
+  isChanged,
+  isDone,
+  lastSets,
+  resetDay,
+  setDayActivities,
+  setDayWorkout,
+  setSets,
+  setsFor,
+  toggleDone,
+  workoutFor,
+  listActivities,
+} from '../lib/activities'
+import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, cx } from '../ui/kit'
 
-type Tab = 'danas' | 'plan' | 'treninzi' | 'napredak'
+// ======================================================================
+// Trening: nedeljni raspored aktivnosti + treninzi + traka dana
+// ======================================================================
 
-export default function Trening({ param }: { param?: string }) {
-  const isDate = param && /^\d{4}-\d{2}-\d{2}$/.test(param)
-  const tab: Tab = isDate || !param ? 'danas' : (param as Tab)
-  const date = isDate ? param! : today()
+export default function Trening() {
+  useVersion()
+  const [week, setWeek] = useState(weekStart(today()))
+  const [openDay, setOpenDay] = useState<{ date: string; actId: string } | null>(null)
+  const [addTo, setAddTo] = useState<string | null>(null)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(week, i))
+  const end = addDays(week, 6)
+  const label = (() => {
+    const a = parse(week)
+    const b = parse(end)
+    return a.getMonth() === b.getMonth()
+      ? `${a.getDate()}–${b.getDate()}. ${MONTHS_GEN[a.getMonth()]}`
+      : `${a.getDate()}. ${MONTHS_GEN[a.getMonth()]} – ${b.getDate()}. ${MONTHS_GEN[b.getMonth()]}`
+  })()
+
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title="Trening"
         right={
-          <Segmented<Tab>
-            value={tab}
-            onChange={(v) => go('trening', v === 'danas' ? undefined : v)}
-            options={[
-              { value: 'danas', label: 'Dan' },
-              { value: 'plan', label: 'Nedelja' },
-              { value: 'treninzi', label: 'Treninzi' },
-              { value: 'napredak', label: 'Napredak' },
-            ]}
-          />
+          <>
+            <IconButton title="Prethodna nedelja" onClick={() => setWeek(addDays(week, -7))}>
+              <ChevronLeft size={18} />
+            </IconButton>
+            <span className="text-sm font-medium min-w-[150px] text-center">{label}</span>
+            <IconButton title="Sledeća nedelja" onClick={() => setWeek(addDays(week, 7))}>
+              <ChevronRight size={18} />
+            </IconButton>
+            {week !== weekStart(today()) && (
+              <Button variant="ghost" onClick={() => setWeek(weekStart(today()))}>
+                Ova nedelja
+              </Button>
+            )}
+          </>
         }
       />
-      {tab === 'danas' && <Session date={date} />}
-      {tab === 'plan' && <WeekPlanEditor />}
-      {tab === 'treninzi' && <Workouts />}
-      {tab === 'napredak' && <Progress />}
+
+      <div className="md:flex-1 md:min-h-0 md:overflow-y-auto">
+        {/* Nedelja */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
+          {days.map((d, i) => {
+            const acts = activitiesOn(d)
+            const changed = isChanged(d)
+            const isToday = d === today()
+            return (
+              <Card key={d} className={cx('p-2 flex flex-col min-h-[150px]', isToday && 'ring-2 ring-accent')}>
+                <div className="flex items-baseline justify-between mb-1.5 px-1">
+                  <span className={cx('font-semibold', isToday && 'text-accent')}>{DAYS_SHORT[i]}</span>
+                  <span className="text-xs text-ink-faint">{parse(d).getDate()}.</span>
+                </div>
+                <div className="flex flex-col gap-1 flex-1">
+                  {acts.length === 0 && <div className="text-xs text-ink-faint px-1">Odmor</div>}
+                  {acts.map((a) => {
+                    const done = isDone(d, a.id)
+                    const w = workoutFor(d, a)
+                    return (
+                      <div
+                        key={a.id}
+                        className="group flex items-center gap-1.5 rounded-lg px-1.5 py-1 border-l-4"
+                        style={{
+                          borderColor: a.data.color,
+                          background: done ? 'color-mix(in srgb, #16a34a 16%, rgb(var(--paper-raised)))' : 'rgb(var(--paper-sunk))',
+                        }}
+                      >
+                        <button
+                          aria-label={done ? 'Poništi' : 'Urađeno'}
+                          onClick={() => toggleDone(d, a.id)}
+                          className={cx(
+                            'shrink-0 w-5 h-5 rounded-full border-2 grid place-items-center',
+                            done ? 'bg-emerald-600 border-emerald-600' : 'border-ink-faint',
+                          )}
+                        >
+                          {done && <Check size={12} strokeWidth={3} className="text-white" />}
+                        </button>
+                        <button onClick={() => setOpenDay({ date: d, actId: a.id })} className="flex-1 min-w-0 text-left leading-tight">
+                          <div className="text-sm font-medium break-words">{a.data.name}</div>
+                          {w && <div className="text-xs text-ink-soft break-words">{w.data.name}</div>}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center justify-between mt-1.5 px-1">
+                  <button onClick={() => setAddTo(d)} className="text-xs text-accent inline-flex items-center gap-0.5">
+                    <Plus size={12} /> Dodaj
+                  </button>
+                  {changed && (
+                    <button onClick={() => resetDay(d)} className="text-xs text-ink-faint hover:text-ink inline-flex items-center gap-0.5" title="Vrati podrazumevani raspored">
+                      <RotateCcw size={11} /> vrati
+                    </button>
+                  )}
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-4">
+          <ActivitiesCard />
+          <WorkoutsCard />
+        </div>
+      </div>
+
+      <ActivityStrip />
+
+      <DayActivityModal key={openDay ? openDay.date + openDay.actId : 'none'} target={openDay} onClose={() => setOpenDay(null)} />
+      <AddToDayModal date={addTo} onClose={() => setAddTo(null)} />
     </div>
   )
 }
 
-// ---------------- Dan / logovanje ----------------
+// ---------------- Aktivnosti i njihovi dani ----------------
 
-function lastSetsFor(exerciseId: string, before: string): LoggedSet[] {
-  const logs = store
-    .list<WorkoutLogData>('workoutlog')
-    .filter((l) => l.data.date < before && l.data.sets.some((s) => s.exerciseId === exerciseId))
-    .sort((a, b) => b.data.date.localeCompare(a.data.date))
-  return logs[0]?.data.sets.filter((s) => s.exerciseId === exerciseId) ?? []
+function ActivitiesCard() {
+  const acts = useKind<ActivityData>('activity').sort((a, b) => a.data.order - b.data.order)
+  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
+  const [edit, setEdit] = useState<Item<ActivityData> | 'new' | null>(null)
+  const toggleDay = (a: Item<ActivityData>, d: number) =>
+    store.update<ActivityData>(a.id, (x) => ({
+      ...x,
+      days: x.days.includes(d) ? x.days.filter((y) => y !== d) : [...x.days, d].sort(),
+    }))
+  return (
+    <Card className="p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="font-semibold">Raspored po danima</div>
+          <div className="text-xs text-ink-faint">Ponavlja se svake nedelje. Klikni na dan da ga uključiš ili isključiš.</div>
+        </div>
+        <Button variant="primary" onClick={() => setEdit('new')}>
+          <Plus size={15} /> Aktivnost
+        </Button>
+      </div>
+      {acts.length === 0 && <Empty>Dodaj prvu aktivnost — npr. teretana, plivanje, trčanje.</Empty>}
+      <div className="space-y-3">
+        {acts.map((a) => (
+          <div key={a.id}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3 h-3 rounded-full" style={{ background: a.data.color }} />
+              <span className="font-medium flex-1">{a.data.name}</span>
+              <span className="text-xs text-ink-faint">{a.data.days.length === 7 ? 'svaki dan' : `${a.data.days.length}× nedeljno`}</span>
+              <IconButton title="Izmeni" onClick={() => setEdit(a)} className="w-7 h-7">
+                <Pencil size={13} />
+              </IconButton>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {DAYS_SHORT.map((n, d) => {
+                const on = a.data.days.includes(d)
+                const wid = a.data.dayWorkouts?.[String(d)]
+                return (
+                  <div key={d} className="flex flex-col gap-0.5">
+                    <button
+                      onClick={() => toggleDay(a, d)}
+                      className={cx('py-1 rounded-md text-xs font-medium border transition', on ? 'text-white border-transparent' : 'border-line text-ink-faint hover:bg-paper-sunk')}
+                      style={on ? { background: a.data.color } : undefined}
+                    >
+                      {n}
+                    </button>
+                    {on && workouts.length > 0 && (a.data.usesWorkouts || !!a.data.dayWorkouts?.[String(d)]) && (
+                      <select
+                        className="text-[0.7rem] px-0.5 py-0.5 rounded-md"
+                        value={wid ?? ''}
+                        title="Trening za ovaj dan"
+                        onChange={(e) =>
+                          store.update<ActivityData>(a.id, (x) => {
+                            const dw = { ...(x.dayWorkouts ?? {}) }
+                            if (e.target.value) dw[String(d)] = e.target.value
+                            else delete dw[String(d)]
+                            return { ...x, dayWorkouts: dw }
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {workouts.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.data.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <ActivityEditor item={edit} count={acts.length} onClose={() => setEdit(null)} />
+    </Card>
+  )
 }
 
-function Session({ date }: { date: string }) {
-  useVersion()
-  const [plan] = useWeekPlan()
-  const day = planFor(date, plan)
-  const log = workoutLogFor(date)
-  const exercises = useKind<ExerciseData>('exercise')
-  const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? 'Vežba'
-  const workout = (log?.data.workoutId ?? day.workoutId) ? store.get<WorkoutData>((log?.data.workoutId ?? day.workoutId)!) : undefined
-  const [picking, setPicking] = useState(false)
-  const [chooseWorkout, setChooseWorkout] = useState(false)
-
-  const ensureLog = (): string => {
-    if (log) return log.id
-    return store.put<WorkoutLogData>(
-      'workoutlog',
-      {
-        date,
-        type: day.activity === 'plivanje' ? 'plivanje' : day.activity === 'teretana' ? 'teretana' : 'drugo',
-        workoutId: day.workoutId,
-        title: workoutTitle(day),
-        sets: [],
-        done: false,
-      },
-      `wlog-${date}`,
-    )
+function ActivityEditor({ item, count, onClose }: { item: Item<ActivityData> | 'new' | null; count: number; onClose: () => void }) {
+  const existing = item && item !== 'new' ? item : undefined
+  const blank = (): ActivityData => ({ name: '', color: '#10b981', days: [], order: count + 1 })
+  const [d, setD] = useState<ActivityData>(blank())
+  const [last, setLast] = useState<typeof item>(null)
+  if (item !== last) {
+    setLast(item)
+    setD(existing?.data ?? blank())
   }
+  const toggle = (x: number) => setD({ ...d, days: d.days.includes(x) ? d.days.filter((y) => y !== x) : [...d.days, x].sort() })
+  return (
+    <Modal
+      open={!!item}
+      onClose={onClose}
+      title={existing ? 'Izmeni aktivnost' : 'Nova aktivnost'}
+      footer={
+        <>
+          {existing && (
+            <Button
+              variant="ghost"
+              className="mr-auto text-rose-600"
+              onClick={() => {
+                store.remove(existing.id)
+                onClose()
+              }}
+            >
+              <Trash2 size={15} /> Obriši
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            disabled={!d.name.trim()}
+            onClick={() => {
+              const data = { ...d, name: d.name.trim() }
+              if (existing) store.update<ActivityData>(existing.id, () => data)
+              else store.put<ActivityData>('activity', data)
+              onClose()
+            }}
+          >
+            Sačuvaj
+          </Button>
+        </>
+      }
+    >
+      <Field label="Naziv">
+        <input autoFocus className="w-full" placeholder="npr. Teretana, Plivanje, Trčanje, Bicikl…" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
+      </Field>
+      <Field label="Dani u nedelji">
+        <div className="grid grid-cols-7 gap-1">
+          {DAYS_SHORT.map((n, x) => (
+            <button
+              key={x}
+              type="button"
+              onClick={() => toggle(x)}
+              className={cx('py-2 rounded-lg text-sm border', d.days.includes(x) ? 'text-white border-transparent' : 'border-line text-ink-soft')}
+              style={d.days.includes(x) ? { background: d.color } : undefined}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="text-xs text-accent mt-1.5" onClick={() => setD({ ...d, days: [0, 1, 2, 3, 4, 5, 6] })}>
+          Svaki dan
+        </button>
+      </Field>
+      <label className="flex items-center gap-2 text-sm mb-3">
+        <input type="checkbox" checked={!!d.usesWorkouts} onChange={(e) => setD({ ...d, usesWorkouts: e.target.checked })} />
+        Ima treninge sa vežbama (npr. teretana — Push, Pull, Legs)
+      </label>
+      <Field label="Boja">
+        <ColorPicker value={d.color} onChange={(c) => setD({ ...d, color: c })} />
+      </Field>
+    </Modal>
+  )
+}
 
-  // Redosled vežbi: iz šablona, pa dodate
+// ---------------- Treninzi (Push, Pull, Legs…) ----------------
+
+function WorkoutsCard() {
+  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
+  const exercises = useKind<ExerciseData>('exercise')
+  const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? '?'
+  const [edit, setEdit] = useState<string | 'new' | null>(null)
+  return (
+    <Card className="p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="font-semibold">Moji treninzi</div>
+          <div className="text-xs text-ink-faint">Vežbe, serije i ponavljanja. Dodeli ih danima levo.</div>
+        </div>
+        <Button variant="primary" onClick={() => setEdit('new')}>
+          <Plus size={15} /> Trening
+        </Button>
+      </div>
+      {workouts.length === 0 && <Empty>Napravi npr. „Push“, „Pull“, „Legs“.</Empty>}
+      <div className="grid sm:grid-cols-2 gap-2">
+        {workouts.map((w) => (
+          <button key={w.id} onClick={() => setEdit(w.id)} className="text-left rounded-lg border border-line p-2.5 hover:border-ink-faint">
+            <div className="font-medium mb-1">{w.data.name}</div>
+            <ul className="text-xs text-ink-soft space-y-0.5">
+              {w.data.exercises.map((e, i) => (
+                <li key={i} className="flex justify-between gap-2">
+                  <span className="truncate">{exName(e.exerciseId)}</span>
+                  <span className="tabular text-ink-faint shrink-0">
+                    {e.sets}×{e.reps}
+                  </span>
+                </li>
+              ))}
+              {w.data.exercises.length === 0 && <li className="text-ink-faint">bez vežbi</li>}
+            </ul>
+          </button>
+        ))}
+      </div>
+      <WorkoutEditor id={edit} onClose={() => setEdit(null)} count={workouts.length} />
+    </Card>
+  )
+}
+
+// ---------------- Jedan dan / jedna aktivnost ----------------
+
+function DayActivityModal({ target, onClose }: { target: { date: string; actId: string } | null; onClose: () => void }) {
+  useVersion()
+  const exercises = useKind<ExerciseData>('exercise')
+  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
+  const [picking, setPicking] = useState(false)
+  if (!target) return null
+  const act = store.get<ActivityData>(target.actId)
+  if (!act) return null
+  const { date } = target
+  const w = workoutFor(date, act)
+  const sets = setsFor(date, act.id)
+  const done = isDone(date, act.id)
+  const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? 'Vežba'
   const order: string[] = []
-  for (const we of workout?.data.exercises ?? []) order.push(we.exerciseId)
-  for (const s of log?.data.sets ?? []) if (!order.includes(s.exerciseId)) order.push(s.exerciseId)
-
-  const setsOf = (exId: string) => (log?.data.sets ?? []).map((s, i) => ({ s, i })).filter((x) => x.s.exerciseId === exId)
+  for (const e of w?.data.exercises ?? []) order.push(e.exerciseId)
+  for (const s of sets) if (!order.includes(s.exerciseId)) order.push(s.exerciseId)
 
   const addSet = (exId: string) => {
-    const id = ensureLog()
-    const prev = setsOf(exId)
-    const last = lastSetsFor(exId, date)
-    const template = prev.length ? prev[prev.length - 1].s : last[prev.length] ?? last[last.length - 1]
-    store.update<WorkoutLogData>(id, (d) => ({
-      ...d,
-      sets: [...d.sets, { exerciseId: exId, kg: template?.kg ?? null, reps: template?.reps ?? null }],
-    }))
+    const mine = sets.filter((s) => s.exerciseId === exId)
+    const prev = lastSets(exId, date)
+    const tpl = mine[mine.length - 1] ?? prev[mine.length] ?? prev[prev.length - 1]
+    setSets(date, act.id, [...sets, { exerciseId: exId, kg: tpl?.kg ?? null, reps: tpl?.reps ?? null }])
   }
-  const updateSet = (index: number, patch: Partial<LoggedSet>) => {
-    if (!log) return
-    store.update<WorkoutLogData>(log.id, (d) => ({ ...d, sets: d.sets.map((s, i) => (i === index ? { ...s, ...patch } : s)) }))
-  }
-  const removeSet = (index: number) => {
-    if (!log) return
-    store.update<WorkoutLogData>(log.id, (d) => ({ ...d, sets: d.sets.filter((_, i) => i !== index) }))
-  }
-  const toggleDone = () => {
-    const id = ensureLog()
-    store.update<WorkoutLogData>(id, (d) => ({ ...d, done: !d.done }))
+  const upd = (i: number, patch: Partial<LoggedSet>) => setSets(date, act.id, sets.map((s, j) => (j === i ? { ...s, ...patch } : s)))
+  const del = (i: number) => setSets(date, act.id, sets.filter((_, j) => j !== i))
+  const removeFromDay = () => {
+    setDayActivities(
+      date,
+      activitiesOn(date)
+        .map((a) => a.id)
+        .filter((id) => id !== act.id),
+    )
+    onClose()
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-1 mb-4">
-        <IconButton title="Prethodni dan" onClick={() => go('trening', addDays(date, -1))}>
-          <ChevronLeft size={18} />
-        </IconButton>
-        <div className="text-center min-w-[120px]">
-          <div className="font-semibold">{relDay(date)}</div>
-          <div className="text-xs text-ink-faint">{fmtShort(date)}</div>
-        </div>
-        <IconButton title="Sledeći dan" onClick={() => go('trening', addDays(date, 1))}>
-          <ChevronRight size={18} />
-        </IconButton>
+    <Modal open onClose={onClose} wide={order.length > 0} tall={false} title={`${act.data.name} · ${fmtLong(date)}`}>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Button variant={done ? 'soft' : 'primary'} onClick={() => toggleDone(date, act.id)}>
+          <Check size={16} /> {done ? 'Urađeno ✓ (poništi)' : 'Označi kao urađeno'}
+        </Button>
+        {workouts.length > 0 && (act.data.usesWorkouts || w) && (
+          <select className="text-sm" value={w?.id ?? ''} onChange={(e) => setDayWorkout(date, act.id, e.target.value || undefined)}>
+            <option value="">Bez treninga</option>
+            {workouts.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.data.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <Button variant="ghost" className="ml-auto text-rose-600" onClick={removeFromDay}>
+          <X size={15} /> Skloni samo za ovaj dan
+        </Button>
       </div>
 
-      <Card className="p-3 mb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs text-ink-faint">
-              {day.activity === 'odmor' ? 'Dan odmora' : `${day.time}–${fromMin(toMin(day.time) + day.duration)}`}
-            </div>
-            <div className="text-lg font-semibold">{log?.data.title ?? workoutTitle(day)}</div>
-            {day.activity === 'teretana' && (
-              <button className="text-xs text-accent mt-1" onClick={() => setChooseWorkout(true)}>
-                Promeni trening za danas
-              </button>
-            )}
-          </div>
-          <Button variant={log?.data.done ? 'soft' : 'primary'} onClick={toggleDone}>
-            <Check size={16} /> {log?.data.done ? 'Urađeno' : 'Završi'}
-          </Button>
-        </div>
-        {day.activity === 'plivanje' && (
-          <textarea
-            className="w-full mt-4"
-            rows={2}
-            placeholder="Beleška (npr. 500 m, 20 dužina, kako je išlo)…"
-            defaultValue={log?.data.note ?? ''}
-            onBlur={(e) => {
-              const id = ensureLog()
-              store.update<WorkoutLogData>(id, (d) => ({ ...d, note: e.target.value }))
-            }}
-          />
-        )}
-      </Card>
-
-      {(day.activity === 'teretana' || order.length > 0) && (
-        <>
-          {order.length === 0 && (
-            <Empty>
-              Ovaj dan nema šablon treninga. Napravi ga u „Treninzi“ i dodeli u „Nedelja“, ili dodaj vežbe ručno.
-            </Empty>
-          )}
-          <div className="grid lg:grid-cols-2 gap-2">
-            {order.map((exId) => {
-              const target = workout?.data.exercises.find((e) => e.exerciseId === exId)
-              const sets = setsOf(exId)
-              const last = lastSetsFor(exId, date)
-              return (
-                <Card key={exId} className="p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium text-sm leading-tight">{exName(exId)}</div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {target && (
-                        <span className="text-xs text-ink-faint tabular whitespace-nowrap">
-                          {target.sets} × {target.reps}
-                        </span>
-                      )}
-                      <Button variant="soft" className="py-0.5 px-2 text-xs" onClick={() => addSet(exId)}>
-                        <Plus size={13} /> Serija
-                      </Button>
-                    </div>
-                  </div>
-                  {last.length > 0 && (
-                    <div className="text-xs text-ink-faint mt-0.5">
-                      Prošli put: {last.map((s) => `${s.kg ?? '—'}×${s.reps ?? '—'}`).join(', ')}
-                    </div>
-                  )}
-                  <div className={sets.length ? 'mt-2 space-y-1' : ''}>
-                    {sets.map(({ s, i }, n) => (
+      {order.length > 0 && (
+        <div className="grid md:grid-cols-2 gap-2">
+          {order.map((exId) => {
+            const target2 = w?.data.exercises.find((e) => e.exerciseId === exId)
+            const mine = sets.map((s, i) => ({ s, i })).filter((x) => x.s.exerciseId === exId)
+            const prev = lastSets(exId, date)
+            return (
+              <div key={exId} className="rounded-lg border border-line p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm">{exName(exId)}</span>
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    {target2 && (
+                      <span className="text-xs text-ink-faint tabular">
+                        {target2.sets}×{target2.reps}
+                      </span>
+                    )}
+                    <Button variant="soft" className="py-0.5 px-2 text-xs" onClick={() => addSet(exId)}>
+                      <Plus size={13} /> Serija
+                    </Button>
+                  </span>
+                </div>
+                {prev.length > 0 && <div className="text-xs text-ink-faint">Prošli put: {prev.map((s) => `${s.kg ?? '—'}×${s.reps ?? '—'}`).join(', ')}</div>}
+                {mine.length > 0 && (
+                  <div className="mt-1.5 space-y-1">
+                    {mine.map(({ s, i }, n) => (
                       <div key={i} className="flex items-center gap-2">
-                        <span className="w-6 text-xs text-ink-faint tabular">{n + 1}.</span>
-                        <NumInput value={s.kg} onCommit={(v) => updateSet(i, { kg: v })} suffix="kg" />
+                        <span className="w-5 text-xs text-ink-faint tabular">{n + 1}.</span>
+                        <NumInput value={s.kg} onCommit={(v) => upd(i, { kg: v })} suffix="kg" />
                         <span className="text-ink-faint">×</span>
-                        <NumInput value={s.reps} onCommit={(v) => updateSet(i, { reps: v })} suffix="pon" />
-                        <IconButton title="Ukloni seriju" onClick={() => removeSet(i)} className="ml-auto">
-                          <Trash2 size={14} />
+                        <NumInput value={s.reps} onCommit={(v) => upd(i, { reps: v })} suffix="pon" />
+                        <IconButton title="Ukloni seriju" onClick={() => del(i)} className="ml-auto w-7 h-7">
+                          <Trash2 size={13} />
                         </IconButton>
                       </div>
                     ))}
                   </div>
-                </Card>
-              )
-            })}
-          </div>
-          <Button className="mt-3" onClick={() => setPicking(true)}>
-            <Plus size={16} /> Dodaj vežbu
-          </Button>
-        </>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
-
+      {(act.data.usesWorkouts || w || order.length > 0) && (
+        <Button className="mt-3" onClick={() => setPicking(true)}>
+          <Plus size={15} /> Dodaj vežbu
+        </Button>
+      )}
+      {!act.data.usesWorkouts && !w && order.length === 0 && <div className="text-sm text-ink-faint">Samo štikliraj kad završiš.</div>}
       <ExercisePicker
         open={picking}
         onClose={() => setPicking(false)}
         onPick={(id) => {
-          addSet(id)
+          setSets(date, act.id, [...sets, { exerciseId: id, kg: null, reps: null }])
           setPicking(false)
         }}
       />
-      <WorkoutChooser
-        open={chooseWorkout}
-        onClose={() => setChooseWorkout(false)}
-        onPick={(w) => {
-          const id = ensureLog()
-          store.update<WorkoutLogData>(id, (d) => ({ ...d, workoutId: w.id, title: `Teretana — ${w.data.name}` }))
-          setChooseWorkout(false)
-        }}
-      />
+    </Modal>
+  )
+}
+
+function AddToDayModal({ date, onClose }: { date: string | null; onClose: () => void }) {
+  useVersion()
+  if (!date) return null
+  const all = listActivities()
+  const current = activitiesOn(date).map((a) => a.id)
+  const free = all.filter((a) => !current.includes(a.id))
+  return (
+    <Modal open onClose={onClose} title={`Dodaj za ${fmtLong(date)}`}>
+      <p className="text-sm text-ink-soft mb-3">Menja raspored samo za ovaj dan. Ostale nedelje ostaju iste.</p>
+      {free.length === 0 ? (
+        <Empty>Sve aktivnosti su već tog dana.</Empty>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {free.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => {
+                setDayActivities(date, [...current, a.id])
+                onClose()
+              }}
+              className="flex items-center gap-2 rounded-lg border-2 px-3 py-2 text-left hover:bg-paper-sunk"
+              style={{ borderColor: a.data.color }}
+            >
+              <span className="w-3 h-3 rounded-full" style={{ background: a.data.color }} />
+              <span className="font-medium">{a.data.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ---------------- Traka poslednjih 60 dana ----------------
+
+function ActivityStrip() {
+  useVersion()
+  const DAYS = 60
+  const end = today()
+  const start = addDays(end, -(DAYS - 1))
+  const first = store
+    .list<{ date: string; done: string[] }>('actday')
+    .filter((d) => d.data.done?.length)
+    .map((d) => d.data.date)
+    .sort()[0]
+  const from = first ?? end
+  const days = Array.from({ length: DAYS }, (_, i) => addDays(start, i))
+  const states = days.map((d) => (d < from ? 'before' : dayState(d, end)))
+  const tracked = days.filter((d, i) => d >= from && d < end && states[i] !== 'none')
+  const okCount = days.filter((d, i) => d >= from && d < end && states[i] === 'done').length
+  let streakN = 0
+  for (let i = days.length - 1; i >= 0; i--) {
+    const st = states[i]
+    if (days[i] === end && st !== 'done') continue
+    if (st === 'done') streakN++
+    else if (st === 'none') continue
+    else break
+  }
+  return (
+    <div className="mt-3 pt-3 border-t border-line">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1.5 text-sm">
+        <span className="font-semibold">Poslednjih {DAYS} dana</span>
+        <span className="text-ink-soft">
+          Sve urađeno <b className="text-emerald-600">{okCount}</b> od {tracked.length} dana · niz <b>{streakN}</b>
+        </span>
+      </div>
+      <div className="flex h-8 rounded-lg overflow-hidden border border-line">
+        {days.map((d, i) => {
+          const st = states[i]
+          const bg = st === 'done' ? '#16a34a' : st === 'missed' ? '#e11d48' : 'rgb(var(--paper-sunk))'
+          const acts = activitiesOn(d)
+          return (
+            <div
+              key={d}
+              title={`${fmtLong(d)}: ${acts.length ? acts.map((a) => (isDone(d, a.id) ? '✓ ' : '✗ ') + a.data.name).join(', ') : 'odmor'}`}
+              className="flex-1 border-r border-black/10 last:border-r-0"
+              style={{ background: bg }}
+            />
+          )
+        })}
+      </div>
+      <div className="flex justify-between text-xs text-ink-faint mt-1">
+        <span>{iso(parse(start)) && `${parse(start).getDate()}. ${MONTHS_GEN[parse(start).getMonth()]}`}</span>
+        <span className="flex gap-3">
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#16a34a]" /> sve urađeno
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#e11d48]" /> nešto propušteno
+          </span>
+        </span>
+        <span>danas</span>
+      </div>
     </div>
   )
 }
+
+// ---------------- Pomoćne komponente ----------------
 
 function NumInput({ value, onCommit, suffix }: { value: number | null; onCommit: (v: number | null) => void; suffix: string }) {
   const [v, setV] = useState(value === null ? '' : String(value))
@@ -286,206 +610,6 @@ function ExercisePicker({ open, onClose, onPick }: { open: boolean; onClose: () 
   )
 }
 
-function WorkoutChooser({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (w: { id: string; data: WorkoutData }) => void }) {
-  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
-  return (
-    <Modal open={open} onClose={onClose} title="Trening za danas">
-      {workouts.length === 0 && <Empty>Nema šablona treninga.</Empty>}
-      <div className="space-y-1">
-        {workouts.map((w) => (
-          <button key={w.id} onClick={() => onPick(w)} className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-paper-sunk">
-            <div className="font-medium">{w.data.name}</div>
-            <div className="text-xs text-ink-faint">{w.data.exercises.length} vežbi</div>
-          </button>
-        ))}
-      </div>
-    </Modal>
-  )
-}
-
-// ---------------- Nedeljni plan ----------------
-
-function WeekPlanEditor() {
-  const [plan, setPlan] = useWeekPlan()
-  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
-  const update = (i: number, patch: Partial<WeekPlanDay>) =>
-    setPlan((p) => ({ ...p, days: p.days.map((d, j) => (j === i ? { ...d, ...patch } : d)) }))
-  const counts = plan.days.reduce(
-    (a, d) => ({ ...a, [d.activity]: (a[d.activity] ?? 0) + 1 }),
-    {} as Record<DayActivity, number>,
-  )
-  return (
-    <div>
-      <p className="text-sm text-ink-soft mb-3">
-        Teretana {counts.teretana ?? 0}×, plivanje {counts.plivanje ?? 0}× nedeljno. Trbušnjaci i vežbe disanja su u Navikama.
-      </p>
-      <Card className="divide-y divide-line">
-        {plan.days.map((d, i) => (
-          <div key={i} className="p-3 flex flex-wrap items-center gap-2">
-            <div className="w-28 font-medium">{DAYS_LONG[i]}</div>
-            <Segmented<DayActivity>
-              value={d.activity}
-              onChange={(v) =>
-                update(i, {
-                  activity: v,
-                  time: v === 'plivanje' ? '06:25' : v === 'teretana' ? '06:00' : d.time,
-                  duration: v === 'plivanje' ? 60 : v === 'teretana' ? 75 : d.duration,
-                })
-              }
-              options={[
-                { value: 'teretana', label: 'Teretana' },
-                { value: 'plivanje', label: 'Plivanje' },
-                { value: 'odmor', label: 'Odmor' },
-              ]}
-            />
-            {d.activity === 'teretana' && (
-              <select className="py-1.5 text-sm" value={d.workoutId ?? ''} onChange={(e) => update(i, { workoutId: e.target.value || undefined })}>
-                <option value="">— trening —</option>
-                {workouts.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.data.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {d.activity !== 'odmor' && (
-              <div className="flex items-center gap-1.5 ml-auto">
-                <input type="time" className="py-1.5 text-sm" value={d.time} onChange={(e) => update(i, { time: e.target.value })} />
-                <input
-                  type="number"
-                  className="py-1.5 text-sm w-20"
-                  value={d.duration}
-                  onChange={(e) => update(i, { duration: Number(e.target.value) || 60 })}
-                />
-                <span className="text-xs text-ink-faint">min</span>
-              </div>
-            )}
-          </div>
-        ))}
-      </Card>
-    </div>
-  )
-}
-
-// ---------------- Šabloni treninga ----------------
-
-function Workouts() {
-  const workouts = useKind<WorkoutData>('workout').sort((a, b) => a.data.order - b.data.order)
-  const exercises = useKind<ExerciseData>('exercise').sort((a, b) => a.data.name.localeCompare(b.data.name))
-  const [edit, setEdit] = useState<string | 'new' | null>(null)
-  const [exEdit, setExEdit] = useState<{ id?: string; data: ExerciseData } | null>(null)
-  const exName = (id: string) => exercises.find((e) => e.id === id)?.data.name ?? '?'
-  return (
-    <div className="lg:grid lg:grid-cols-[1fr_320px] gap-4">
-      <div>
-        <SectionTitle
-          action={
-            <Button variant="ghost" onClick={() => setEdit('new')}>
-              <Plus size={15} /> Trening
-            </Button>
-          }
-        >
-          Treninzi
-        </SectionTitle>
-        {workouts.length === 0 && <Empty>Nema treninga. Napravi npr. „Upper A“.</Empty>}
-        <div className="grid sm:grid-cols-2 gap-3">
-          {workouts.map((w) => (
-            <Card key={w.id} className="p-3 cursor-pointer hover:border-ink-faint" onClick={() => setEdit(w.id)}>
-              <div className="font-medium mb-1">{w.data.name}</div>
-              <ul className="text-sm text-ink-soft space-y-0.5">
-                {w.data.exercises.map((e, i) => (
-                  <li key={i} className="flex justify-between gap-2">
-                    <span className="truncate">{exName(e.exerciseId)}</span>
-                    <span className="tabular text-ink-faint shrink-0">
-                      {e.sets}×{e.reps}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
-        </div>
-      </div>
-      <div className="mt-4 lg:mt-0">
-        <SectionTitle
-          action={
-            <Button variant="ghost" onClick={() => setExEdit({ data: { name: '' } })}>
-              <Plus size={15} /> Vežba
-            </Button>
-          }
-        >
-          Vežbe
-        </SectionTitle>
-        <Card className="px-4 py-1">
-          {exercises.length === 0 ? (
-            <Empty>Nema vežbi.</Empty>
-          ) : (
-            <ul className="divide-y divide-line">
-              {exercises.map((e) => (
-                <li key={e.id} className="flex items-center py-2 text-sm">
-                  <span className="flex-1">
-                    {e.data.name}
-                    {e.data.muscle && <span className="text-ink-faint"> · {e.data.muscle}</span>}
-                  </span>
-                  <IconButton title="Izmeni" onClick={() => setExEdit({ id: e.id, data: e.data })}>
-                    <Pencil size={14} />
-                  </IconButton>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-      <WorkoutEditor id={edit} onClose={() => setEdit(null)} count={workouts.length} />
-      <Modal
-        open={!!exEdit}
-        onClose={() => setExEdit(null)}
-        title={exEdit?.id ? 'Izmeni vežbu' : 'Nova vežba'}
-        footer={
-          <>
-            {exEdit?.id && (
-              <Button
-                variant="ghost"
-                className="mr-auto text-rose-600"
-                onClick={() => {
-                  if (confirm('Obrisati vežbu? Istorija ostaje.')) {
-                    store.remove(exEdit.id!)
-                    setExEdit(null)
-                  }
-                }}
-              >
-                Obriši
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              disabled={!exEdit?.data.name.trim()}
-              onClick={() => {
-                if (!exEdit) return
-                if (exEdit.id) store.update<ExerciseData>(exEdit.id, () => exEdit.data)
-                else store.put<ExerciseData>('exercise', exEdit.data)
-                setExEdit(null)
-              }}
-            >
-              Sačuvaj
-            </Button>
-          </>
-        }
-      >
-        {exEdit && (
-          <>
-            <Field label="Naziv">
-              <input className="w-full" value={exEdit.data.name} onChange={(e) => setExEdit({ ...exEdit, data: { ...exEdit.data, name: e.target.value } })} />
-            </Field>
-            <Field label="Mišićna grupa (opciono)">
-              <input className="w-full" value={exEdit.data.muscle ?? ''} onChange={(e) => setExEdit({ ...exEdit, data: { ...exEdit.data, muscle: e.target.value } })} />
-            </Field>
-          </>
-        )}
-      </Modal>
-    </div>
-  )
-}
 
 function WorkoutEditor({ id, onClose, count }: { id: string | 'new' | null; onClose: () => void; count: number }) {
   const existing = id && id !== 'new' ? store.get<WorkoutData>(id) : undefined
@@ -589,80 +713,3 @@ function WorkoutEditor({ id, onClose, count }: { id: string | 'new' | null; onCl
 
 // ---------------- Napredak ----------------
 
-function Progress() {
-  const exercises = useKind<ExerciseData>('exercise').sort((a, b) => a.data.name.localeCompare(b.data.name))
-  const logs = useKind<WorkoutLogData>('workoutlog').sort((a, b) => a.data.date.localeCompare(b.data.date))
-  const used = exercises.filter((e) => logs.some((l) => l.data.sets.some((s) => s.exerciseId === e.id && s.kg)))
-  const [sel, setSel] = useState<string | null>(null)
-  const ex = sel ?? used[0]?.id
-  const points = useMemo(() => {
-    if (!ex) return []
-    return logs
-      .map((l) => {
-        const sets = l.data.sets.filter((s) => s.exerciseId === ex && s.kg !== null)
-        if (!sets.length) return null
-        return { x: fmtShort(l.data.date), y: Math.max(...sets.map((s) => s.kg ?? 0)) }
-      })
-      .filter((p): p is { x: string; y: number } => !!p)
-  }, [ex, logs])
-  const done = logs.filter((l) => l.data.done)
-  const last30 = done.filter((l) => l.data.date >= addDays(today(), -30))
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <Card className="p-3">
-          <div className="text-xs text-ink-faint">Poslednjih 30 dana</div>
-          <div className="text-lg font-semibold tabular">{last30.length}</div>
-          <div className="text-xs text-ink-faint">treninga</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-ink-faint">Teretana</div>
-          <div className="text-lg font-semibold tabular">{last30.filter((l) => l.data.type === 'teretana').length}</div>
-        </Card>
-        <Card className="p-3">
-          <div className="text-xs text-ink-faint">Plivanje</div>
-          <div className="text-lg font-semibold tabular">{last30.filter((l) => l.data.type === 'plivanje').length}</div>
-        </Card>
-      </div>
-      <SectionTitle>Najveća kilaža po treningu</SectionTitle>
-      {used.length === 0 ? (
-        <Empty>Kad počneš da upisuješ serije, ovde će se videti napredak.</Empty>
-      ) : (
-        <>
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {used.map((e) => (
-              <button
-                key={e.id}
-                onClick={() => setSel(e.id)}
-                className={cx('px-3 py-1 rounded-full text-sm border', ex === e.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft')}
-              >
-                {e.data.name}
-              </button>
-            ))}
-          </div>
-          <Card className="p-3">
-            <LineChart points={points} unit=" kg" color="#10b981" />
-          </Card>
-        </>
-      )}
-      <SectionTitle>
-        <span className="block mt-4">Istorija</span>
-      </SectionTitle>
-      <Card className="px-4 py-1">
-        {done.length === 0 ? (
-          <Empty>Još nema završenih treninga.</Empty>
-        ) : (
-          <ul className="divide-y divide-line">
-            {[...done].reverse().slice(0, 40).map((l) => (
-              <li key={l.id} className="flex items-center py-1.5 text-sm cursor-pointer" onClick={() => go('trening', l.data.date)}>
-                <span className="w-24 text-ink-soft">{fmtShort(l.data.date)}</span>
-                <span className="flex-1">{l.data.title}</span>
-                <span className="text-xs text-ink-faint">{l.data.sets.length ? `${l.data.sets.length} serija` : l.data.note ?? ''}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </div>
-  )
-}

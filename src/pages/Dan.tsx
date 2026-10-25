@@ -99,19 +99,6 @@ export default function Dan({ param }: { param?: string }) {
       faint: !cl.attending,
     })
   }
-  const day = planFor(date, plan)
-  if (day.activity !== 'odmor') {
-    const from = toMin(day.time)
-    blocks.push({
-      key: 'trening',
-      title: workoutTitle(day),
-      sub: `${day.time}–${fromMin(from + day.duration)}`,
-      from,
-      to: from + day.duration,
-      color: day.activity === 'plivanje' ? '#06b6d4' : '#10b981',
-      onClick: () => go('trening', date),
-    })
-  }
   const laid = layout(blocks)
   const hours = Array.from({ length: END_H - START_H }, (_, i) => START_H + i)
   const isToday = date === today()

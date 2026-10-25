@@ -21,6 +21,7 @@ import { supabase, LOCAL_MODE, DEMO } from './lib/supabase'
 import { store, useSyncStatus } from './lib/store'
 import { useRoute, go, type Route } from './lib/router'
 import { ensureDefaults } from './data/defaults'
+import { ensureActivities } from './lib/activities'
 import { useSettings } from './lib/logic'
 import { cx } from './ui/kit'
 import Auth from './pages/Auth'
@@ -56,6 +57,7 @@ export default function App() {
           if (loader) ((await loader()) as { loadDemo: () => void }).loadDemo()
         }
         ensureDefaults()
+        ensureActivities()
         setReady(true)
       })
       return
@@ -71,6 +73,7 @@ export default function App() {
     setReady(false)
     store.start(userId).then(() => {
       ensureDefaults()
+        ensureActivities()
       setReady(true)
     })
     return () => store.stop()
@@ -156,7 +159,7 @@ function Shell() {
       case 'kalendar': return <Kalendar param={param} />
       case 'dan': return <Dan param={param} />
       case 'ishrana': return <Ishrana param={param} />
-      case 'trening': return <Trening param={param} />
+      case 'trening': return <Trening />
       case 'navike': return <Navike />
       case 'predmeti': return <Predmeti />
       case 'raspored': return <Raspored />

@@ -1,5 +1,6 @@
 import { addDays, fromMin, iso, timeOf, toMin, weekday } from './dates'
 import { store, useSingleton } from './store'
+import { activitiesOn, isDone, toggleDone, workoutFor } from './activities'
 import { RASPORED, RASPORED_SUBJECTS, type ClassSlot } from '../data/raspored'
 import { scheduleWeekday } from '../data/ftn'
 import { DEFAULT_WEEKPLAN } from '../data/defaults'
@@ -328,17 +329,15 @@ export function obligationsFor(date: string): Obligation[] {
     })
   }
 
-  const day = planFor(date, plan)
-  if (day.activity !== 'odmor') {
-    const log = workoutLogFor(date)
+  for (const a of activitiesOn(date)) {
+    const w = workoutFor(date, a)
     out.push({
-      key: 'tr:' + date,
-      title: workoutTitle(day),
-      time: day.time,
-      color: day.activity === 'plivanje' ? '#06b6d4' : '#10b981',
+      key: 'ac:' + a.id + ':' + date,
+      title: w ? `${a.data.name} — ${w.data.name}` : a.data.name,
+      color: a.data.color,
       kind: 'training',
-      done: !!log?.data.done,
-      toggle: () => toggleWorkoutDone(date),
+      done: isDone(date, a.id),
+      toggle: () => toggleDone(date, a.id),
     })
   }
 
