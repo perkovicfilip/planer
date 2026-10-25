@@ -66,12 +66,12 @@ function MiniDay({ date, mark, onClick, ftn }: { date: string; mark?: DayMark; o
     <button
       onClick={onClick}
       title={titleFor(date, mark, ftn)}
-      className="relative h-11 grid place-items-center hover:bg-paper-sunk/60 rounded-md"
+      className="relative h-9 grid place-items-center hover:bg-paper-sunk/60 rounded-md"
       style={f ? { background: f.color } : undefined}
     >
       <span
         className={cx(
-          'w-9 h-9 rounded-full grid place-items-center text-base tabular',
+          'w-8 h-8 rounded-full grid place-items-center text-[0.95rem] tabular',
           filled ? 'text-white font-bold' : f ? 'text-stone-900' : 'text-ink',
           isToday && 'ring-2 ring-accent ring-offset-2 ring-offset-paper',
         )}
@@ -107,7 +107,7 @@ function MiniMonth({ y, m, marks, ftn }: { y: number; m: number; marks: Map<stri
   const rows = monthGrid(y, m)
   return (
     <div>
-      <div className="text-center text-lg font-semibold mb-1 capitalize">
+      <div className="text-center text-base font-semibold mb-0.5 capitalize">
         {MONTHS[m]} <span className="text-ink-faint font-normal">{y}</span>
       </div>
       <div className="grid grid-cols-7 text-sm text-ink-faint text-center mb-0.5">
@@ -281,8 +281,8 @@ export default function Kalendar({ param }: { param?: string }) {
             <IconButton title="Nazad" onClick={() => shift(-1)}>
               <ChevronLeft size={18} />
             </IconButton>
-            <Button variant="ghost" onClick={() => setAnchor(defaultAnchor())}>
-              Danas
+            <Button variant="ghost" className="min-w-[80px]" onClick={() => setAnchor(defaultAnchor())} title="Vrati na početak">
+              {(view === 'godina' ? `${MONTHS[months[0].m].slice(0, 3)}-${MONTHS[last.m].slice(0, 3)}` : MONTHS[anchor.m].slice(0, 3)).toLowerCase()}
             </Button>
             <IconButton title="Napred" onClick={() => shift(1)}>
               <ChevronRight size={18} />
@@ -308,7 +308,7 @@ export default function Kalendar({ param }: { param?: string }) {
       <div className="lg:flex gap-4 md:flex-1 md:min-h-0">
         <div className="flex-1 min-w-0 md:overflow-y-auto">
           {view === 'godina' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 max-w-5xl">
               {months.map((mm) => (
                 <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} ftn={ftn} />
               ))}
