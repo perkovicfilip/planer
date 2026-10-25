@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { store, useKind } from '../lib/store'
 import { distinctColor } from '../lib/colors'
 import type { Category, EventData, Item } from '../lib/types'
@@ -239,6 +239,14 @@ export default function Kalendar({ param }: { param?: string }) {
       ? `${MONTHS[months[0].m]} ${months[0].y} – ${MONTHS[last.m]} ${last.y}`
       : `${MONTHS[anchor.m]} ${anchor.y}`
 
+  const removeCat = (id: string, name: string) => {
+    const evs = store.list<EventData>('event').filter((e) => e.data.categoryId === id)
+    if (!confirm(evs.length ? `Obrisati „${name}“ i ${evs.length} upisa u kalendaru?` : `Obrisati „${name}“?`)) return
+    for (const e of evs) store.remove(e.id)
+    store.remove(id)
+    if (filter === id) setFilter(null)
+  }
+
   const addCat = () => {
     if (!newCat.trim()) return
     store.put<Category>('category', {
@@ -318,6 +326,7 @@ export default function Kalendar({ param }: { param?: string }) {
                     onClick={() => setFilter(filter === c.id ? null : c.id)}
                     label={c.data.name}
                     color={c.data.color}
+                    onDelete={() => removeCat(c.id, c.data.name)}
                   />
                 ))}
               </div>
@@ -356,11 +365,18 @@ export default function Kalendar({ param }: { param?: string }) {
   )
 }
 
-function LegendRow({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color?: string }) {
+function LegendRow({ active, onClick, label, color, onDelete }: { active: boolean; onClick: () => void; label: string; color?: string; onDelete?: () => void }) {
   return (
-    <button onClick={onClick} className={cx('w-full flex items-center gap-2 px-1.5 py-0.5 rounded-md text-sm text-left', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
-      {color && <Dot color={color} />}
-      <span className="truncate">{label}</span>
-    </button>
+    <div className={cx('group flex items-center rounded-md', active ? 'bg-paper-sunk font-medium' : 'hover:bg-paper-sunk/60')}>
+      <button onClick={onClick} className="flex-1 min-w-0 flex items-center gap-2 px-1.5 py-0.5 text-sm text-left">
+        {color && <Dot color={color} />}
+        <span className="truncate">{label}</span>
+      </button>
+      {onDelete && (
+        <button title="Obriši događaj" onClick={onDelete} className="px-1.5 text-ink-faint hover:text-rose-600 opacity-0 group-hover:opacity-100">
+          <X size={15} />
+        </button>
+      )}
+    </div>
   )
 }
