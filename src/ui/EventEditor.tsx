@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { store, useKind } from '../lib/store'
-import { iso } from '../lib/dates'
+import { fmtLong, iso } from '../lib/dates'
 import { distinctColor } from '../lib/colors'
-import type { Category, EventData, Repeat } from '../lib/types'
-import { Button, Field, Modal, Segmented, cx } from './kit'
+import { occursOn } from '../lib/logic'
+import type { Category, EventData } from '../lib/types'
+import { Button, Modal } from './kit'
 
-const REMIND_OPTIONS: { v: number; label: string }[] = [
-  { v: 10, label: '10 min' },
-  { v: 30, label: '30 min' },
-  { v: 60, label: '1 h' },
-  { v: 180, label: '3 h' },
-  { v: 1440, label: '1 dan' },
-  { v: 4320, label: '3 dana' },
-  { v: 10080, label: '7 dana' },
-]
-
+/**
+ * Jednostavan prozor za jedan dan: šta je već upisano tog dana + klik na događaj da se doda.
+ * Vreme je opciono.
+ */
 export function EventEditor({
   open,
   onClose,
@@ -30,233 +25,131 @@ export function EventEditor({
   start?: string
 }) {
   const cats = useKind<Category>('category')
-  const sortedCats = useMemo(
-    () => [...cats].sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.order - b.data.order),
-    [cats],
-  )
-  const existing = eventId ? store.get<EventData>(eventId) : undefined
-  const blank = (): EventData => ({
-    title: '',
-    date: date ?? iso(),
-    start,
-    end: start ? addHour(start) : undefined,
-    repeat: 'none',
-    remindBefore: [],
-  })
-  const [d, setD] = useState<EventData>(existing?.data ?? blank())
-  const [timed, setTimed] = useState<boolean>(!!(existing?.data.start ?? start))
-  const [multi, setMulti] = useState<boolean>(!!existing?.data.endDate)
+  const events = useKind<EventData>('event')
+  const day = (eventId && store.get<EventData>(eventId)?.data.date) || date || iso()
+  const [time, setTime] = useState(start ?? '')
+  const [newName, setNewName] = useState('')
 
   useEffect(() => {
-    if (!open) return
-    const ex = eventId ? store.get<EventData>(eventId) : undefined
-    setD(ex?.data ?? blank())
-    setTimed(!!(ex?.data.start ?? start))
-    setMulti(!!ex?.data.endDate)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, eventId, date, start])
+    if (open) {
+      setTime(start ?? '')
+      setNewName('')
+    }
+  }, [open, start, day])
 
-  const set = <K extends keyof EventData>(k: K, v: EventData[K]) => setD((x) => ({ ...x, [k]: v }))
-  const [newCat, setNewCat] = useState('')
-  const addCat = () => {
-    if (!newCat.trim()) return
-    const id = store.put<Category>('category', {
-      name: newCat.trim(),
-      color: distinctColor(cats.map((c) => c.data.color)),
-      group: 'ostalo',
-      order: cats.length + 1,
+  const sortedCats = useMemo(() => [...cats].sort((a, b) => a.data.order - b.data.order), [cats])
+  const catMap = new Map(cats.map((c) => [c.id, c.data]))
+  const onDay = events
+    .filter((e) => occursOn(e.data, day))
+    .sort((a, b) => (a.data.start || '99').localeCompare(b.data.start || '99'))
+
+  const add = (cat: { id: string; name: string }) => {
+    store.put<EventData>('event', {
+      title: cat.name,
+      categoryId: cat.id,
+      date: day,
+      start: time || undefined,
+      repeat: 'none',
+      remindBefore: [],
     })
-    set('categoryId', id)
-    setNewCat('')
+    setTime('')
   }
 
-  function save() {
-    if (!d.title.trim()) return
-    const clean: EventData = {
-      ...d,
-      title: d.title.trim(),
-      start: timed ? d.start || '09:00' : undefined,
-      end: timed ? d.end || undefined : undefined,
-      endDate: multi && d.endDate && d.endDate > d.date ? d.endDate : undefined,
-      repeatUntil: d.repeat !== 'none' ? d.repeatUntil : undefined,
-    }
-    if (eventId) store.update<EventData>(eventId, () => clean)
-    else store.put<EventData>('event', clean)
-    onClose()
-  }
-
-  function remove() {
-    if (eventId && confirm('Obrisati ovaj događaj?')) {
-      store.remove(eventId)
-      onClose()
-    }
-  }
-
-  const toggleRemind = (v: number) => {
-    const s = new Set(d.remindBefore ?? [])
-    if (s.has(v)) s.delete(v)
-    else s.add(v)
-    set('remindBefore', [...s].sort((a, b) => a - b))
+  const addNew = () => {
+    const name = newName.trim()
+    if (!name) return
+    const existing = cats.find((c) => c.data.name.toLowerCase() === name.toLowerCase())
+    const id =
+      existing?.id ??
+      store.put<Category>('category', {
+        name,
+        color: distinctColor(cats.map((c) => c.data.color)),
+        group: 'ostalo',
+        order: cats.length + 1,
+      })
+    add({ id, name: existing?.data.name ?? name })
+    setNewName('')
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={eventId ? 'Izmeni događaj' : 'Novi događaj'}
+      tall={false}
+      title={fmtLong(day)}
       footer={
-        <>
-          {eventId && (
-            <Button variant="ghost" onClick={remove} className="mr-auto text-rose-600">
-              <Trash2 size={16} /> Obriši
-            </Button>
-          )}
-          <Button variant="ghost" onClick={onClose}>
-            Otkaži
-          </Button>
-          <Button variant="primary" onClick={save} disabled={!d.title.trim()}>
-            Sačuvaj
-          </Button>
-        </>
+        <Button variant="primary" onClick={onClose}>
+          Gotovo
+        </Button>
       }
     >
-      <Field label="Naziv">
-        <input
-          autoFocus
-          className="w-full"
-          placeholder="npr. Kolokvijum 1, Ispit, Wolt smena…"
-          value={d.title}
-          onChange={(e) => set('title', e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && save()}
-        />
-      </Field>
+      {onDay.length > 0 && (
+        <div className="mb-4 space-y-1.5">
+          {onDay.map((e) => {
+            const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+            return (
+              <div
+                key={e.id}
+                className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-white"
+                style={{ background: c?.color ?? '#64748b' }}
+              >
+                <span className="flex-1 font-medium truncate" style={{ textShadow: '0 1px 2px rgb(0 0 0 / 0.35)' }}>
+                  {e.data.title}
+                </span>
+                <input
+                  type="time"
+                  className="w-[7.5rem] py-0.5 text-sm text-ink"
+                  value={e.data.start ?? ''}
+                  onChange={(ev) => store.update<EventData>(e.id, (d) => ({ ...d, start: ev.target.value || undefined }))}
+                  title="Vreme (opciono)"
+                />
+                <button title="Obriši" className="opacity-80 hover:opacity-100" onClick={() => store.remove(e.id)}>
+                  <X size={18} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
-      <Field label="Aktivnost (boja u kalendaru)">
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => set('categoryId', undefined)}
-            className={cx('px-2.5 py-1 rounded-full text-sm border', !d.categoryId ? 'border-ink' : 'border-line text-ink-soft')}
-          >
-            Bez
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-sm text-ink-soft">U koliko sati</span>
+        <input type="time" className="w-[7.5rem]" value={time} onChange={(e) => setTime(e.target.value)} />
+        {time && (
+          <button className="text-ink-faint hover:text-ink" onClick={() => setTime('')} title="Bez vremena">
+            <X size={16} />
           </button>
+        )}
+        <span className="text-xs text-ink-faint">(nije obavezno)</span>
+      </div>
+
+      {sortedCats.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
           {sortedCats.map((c) => (
             <button
               key={c.id}
-              type="button"
-              onClick={() => set('categoryId', c.id)}
-              className={cx(
-                'px-2.5 py-1 rounded-full text-sm border inline-flex items-center gap-1.5',
-                d.categoryId === c.id ? 'border-ink font-medium' : 'border-line text-ink-soft',
-              )}
+              onClick={() => add({ id: c.id, name: c.data.name })}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line hover:border-ink text-left"
             >
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: c.data.color }} />
-              {c.data.name}
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c.data.color }} />
+              <span className="truncate">{c.data.name}</span>
             </button>
           ))}
         </div>
-        <div className="flex gap-1.5 mt-2">
-          <input
-            className="flex-1 min-w-0 text-sm py-1"
-            placeholder="+ Nova aktivnost (npr. Wolt, Analiza 2…)"
-            value={newCat}
-            onChange={(e) => setNewCat(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addCat()
-              }
-            }}
-          />
-          <Button onClick={addCat} disabled={!newCat.trim()}>
-            Dodaj
-          </Button>
-        </div>
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={multi ? 'Od' : 'Datum'}>
-          <input type="date" className="w-full" value={d.date} onChange={(e) => set('date', e.target.value)} />
-        </Field>
-        {multi ? (
-          <Field label="Do">
-            <input type="date" className="w-full" value={d.endDate ?? d.date} min={d.date} onChange={(e) => set('endDate', e.target.value)} />
-          </Field>
-        ) : (
-          <div className="flex items-end pb-3">
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} />
-              Više dana
-            </label>
-          </div>
-        )}
-      </div>
-      {multi && (
-        <label className="flex items-center gap-2 text-sm text-ink-soft -mt-1 mb-3">
-          <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} />
-          Više dana (npr. Na putu)
-        </label>
       )}
 
-      <label className="flex items-center gap-2 text-sm mb-2">
-        <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} />
-        Tačno vreme
-      </label>
-      {timed && (
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Od">
-            <input type="time" className="w-full" value={d.start ?? ''} onChange={(e) => set('start', e.target.value)} />
-          </Field>
-          <Field label="Do">
-            <input type="time" className="w-full" value={d.end ?? ''} onChange={(e) => set('end', e.target.value)} />
-          </Field>
-        </div>
-      )}
-
-      <Field label="Ponavljanje">
-        <Segmented<Repeat>
-          value={d.repeat}
-          onChange={(v) => set('repeat', v)}
-          options={[
-            { value: 'none', label: 'Nikad' },
-            { value: 'daily', label: 'Dnevno' },
-            { value: 'weekly', label: 'Nedeljno' },
-            { value: 'yearly', label: 'Godišnje' },
-          ]}
+      <div className="flex gap-2">
+        <input
+          className="flex-1 min-w-0"
+          placeholder="Novi događaj…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addNew()}
         />
-      </Field>
-      {d.repeat !== 'none' && (
-        <Field label="Ponavljaj do (opciono)">
-          <input type="date" className="w-full" value={d.repeatUntil ?? ''} onChange={(e) => set('repeatUntil', e.target.value || undefined)} />
-        </Field>
-      )}
-
-      <Field label="Podsetnik pre početka" hint={!timed ? 'Za događaje bez vremena podsetnik se računa od 09:00.' : undefined}>
-        <div className="flex flex-wrap gap-1.5">
-          {REMIND_OPTIONS.map((o) => (
-            <button
-              key={o.v}
-              type="button"
-              onClick={() => toggleRemind(o.v)}
-              className={cx(
-                'px-2.5 py-1 rounded-full text-sm border',
-                d.remindBefore?.includes(o.v) ? 'bg-accent text-white border-accent' : 'border-line text-ink-soft',
-              )}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </Field>
-
-      <Field label="Beleška">
-        <textarea className="w-full" rows={2} value={d.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
-      </Field>
+        <Button onClick={addNew} disabled={!newName.trim()}>
+          <Plus size={16} /> Dodaj
+        </Button>
+      </div>
     </Modal>
   )
-}
-
-function addHour(t: string) {
-  const [h, m] = t.split(':').map(Number)
-  return `${String(Math.min(23, h + 1)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }

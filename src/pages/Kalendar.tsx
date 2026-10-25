@@ -6,7 +6,6 @@ import type { Category, EventData, Item } from '../lib/types'
 import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, monthGrid, parse, today, fmtShort, weekday } from '../lib/dates'
 import { FTN_LEGEND, MAKEUPS, MILESTONES, ftnMark, periodsOn } from '../data/ftn'
 import { occursOn } from '../lib/logic'
-import { go } from '../lib/router'
 import { Button, Card, Dot, IconButton, PageHeader, Segmented, cx } from '../ui/kit'
 import { EventEditor } from '../ui/EventEditor'
 
@@ -103,7 +102,7 @@ function titleFor(date: string, mark?: DayMark, ftn = false) {
   return lines.join('\n')
 }
 
-function MiniMonth({ y, m, marks, ftn }: { y: number; m: number; marks: Map<string, DayMark>; ftn: boolean }) {
+function MiniMonth({ y, m, marks, ftn, onPick }: { y: number; m: number; marks: Map<string, DayMark>; ftn: boolean; onPick: (d: string) => void }) {
   const rows = monthGrid(y, m)
   return (
     <div>
@@ -117,7 +116,7 @@ function MiniMonth({ y, m, marks, ftn }: { y: number; m: number; marks: Map<stri
       </div>
       <div className="grid grid-cols-7 gap-y-0.5">
         {rows.flat().map((d, i) =>
-          d ? <MiniDay key={d} date={d} mark={marks.get(d)} ftn={ftn} onClick={() => go('dan', d)} /> : <div key={'x' + i} />,
+          d ? <MiniDay key={d} date={d} mark={marks.get(d)} ftn={ftn} onClick={() => onPick(d)} /> : <div key={'x' + i} />,
         )}
       </div>
     </div>
@@ -145,7 +144,7 @@ function MonthBig({ y, m, marks, onAdd, ftn }: { y: number; m: number; marks: Ma
           return (
             <div
               key={d}
-              onClick={() => go('dan', d)}
+              onClick={() => onAdd(d)}
               title={titleFor(d, mark, ftn)}
               className={cx('group min-h-[72px] md:min-h-[86px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative', f && 'text-stone-900')}
               style={f ? { background: f.color } : undefined}
@@ -159,16 +158,6 @@ function MonthBig({ y, m, marks, onAdd, ftn }: { y: number; m: number; marks: Ma
                 >
                   {parse(d).getDate()}
                 </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onAdd(d)
-                  }}
-                  className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-ink"
-                  aria-label="Dodaj"
-                >
-                  <Plus size={14} />
-                </button>
               </div>
               <div className="mt-0.5 space-y-0.5">
                 {(mark?.events ?? []).slice(0, 3).map((e) => {
@@ -298,9 +287,6 @@ export default function Kalendar({ param }: { param?: string }) {
             <Button variant={ftn ? 'primary' : 'soft'} onClick={() => setFtn(!ftn)} title="Prikaži ispitne rokove, praznike i neradne dane sa FTN kalendara">
               FTN kalendar
             </Button>
-            <Button variant="primary" onClick={() => setAdding(today())}>
-              <Plus size={16} /> Događaj
-            </Button>
           </>
         }
       />
@@ -310,7 +296,7 @@ export default function Kalendar({ param }: { param?: string }) {
           {view === 'godina' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 max-w-5xl">
               {months.map((mm) => (
-                <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} ftn={ftn} />
+                <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} ftn={ftn} onPick={setAdding} />
               ))}
             </div>
           ) : (
@@ -321,7 +307,7 @@ export default function Kalendar({ param }: { param?: string }) {
         {/* Legenda */}
         <aside className="lg:w-56 shrink-0 mt-4 lg:mt-0 lg:overflow-y-auto">
           <Card className="p-3">
-            <div className="text-sm font-semibold mb-2">Aktivnosti</div>
+            <div className="text-sm font-semibold mb-2">Događaji</div>
             {sortedCats.length > 0 && (
               <div className="space-y-0 mb-2">
                 <LegendRow active={filter === null} onClick={() => setFilter(null)} label="Sve" />
@@ -339,12 +325,12 @@ export default function Kalendar({ param }: { param?: string }) {
             <div className="flex gap-1">
               <input
                 className="flex-1 min-w-0 text-sm py-1"
-                placeholder="Nova aktivnost…"
+                placeholder="Novi događaj…"
                 value={newCat}
                 onChange={(e) => setNewCat(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addCat()}
               />
-              <Button className="px-2" onClick={addCat} disabled={!newCat.trim()} title="Dodaj aktivnost">
+              <Button className="px-2" onClick={addCat} disabled={!newCat.trim()} title="Dodaj događaj">
                 <Plus size={15} />
               </Button>
             </div>
