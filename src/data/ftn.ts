@@ -88,3 +88,46 @@ export function scheduleWeekday(date: string, weekday: number): number | null {
   if (!inTeaching) return null
   return weekday <= 4 ? weekday : null
 }
+
+// ---------------- Boje kao na FTN kalendaru ----------------
+
+export interface FtnMark {
+  color: string
+  label: string
+}
+
+/** Boje i nazivi iz zvaničnog kalendara (legenda FTN-a). */
+export const FTN_LEGEND: { key: string; label: string; color: string }[] = [
+  { key: 'rok-jan', label: 'Januarsko-februarski ispitni rok', color: '#4FC3F7' },
+  { key: 'rok-apr', label: 'Aprilski ispitni rok', color: '#29B6F6' },
+  { key: 'rok-jun', label: 'Junsko-julski ispitni rok', color: '#03A9F4' },
+  { key: 'rok-avg', label: 'Avgustovsko-septembarski ispitni rok', color: '#0288D1' },
+  { key: 'rok-sep', label: 'Dodatni septembarski ispitni rokovi', color: '#81D4FA' },
+  { key: 'dodatni', label: 'Dodatni ispitni rokovi (odslušana nastava)', color: '#92D050' },
+  { key: 'neradni', label: 'Neradni dani (praznici)', color: '#E6A6A6' },
+  { key: 'bez-nastave', label: 'Dani kada nema nastave', color: '#C4BD97' },
+  { key: 'nadoknada', label: 'Nadoknada (nastava po rasporedu drugog dana)', color: '#D9D9D9' },
+  { key: 'nedelja', label: 'Neradni dani (nedelja)', color: '#FFFF66' },
+  { key: 'rangiranje', label: 'Rangiranje studenata za upis', color: '#EBF1DE' },
+]
+
+const legendColor = (key: string) => FTN_LEGEND.find((l) => l.key === key)!.color
+
+/** FTN oznaka za dan (prioritet kao na kalendaru fakulteta). */
+export function ftnMark(date: string, weekdayIdx: number): FtnMark | null {
+  const p = periodsOn(date)
+  const neradni = p.find((x) => x.kind === 'neradni')
+  if (neradni) return { color: legendColor('neradni'), label: neradni.name }
+  const mk = MAKEUPS.find((m) => m.date === date)
+  if (mk) return { color: legendColor('nadoknada'), label: 'Nadoknada' }
+  const bez = p.find((x) => x.kind === 'bez-nastave')
+  if (bez) return { color: legendColor('bez-nastave'), label: bez.name }
+  const dod = p.find((x) => x.kind === 'dodatni')
+  if (dod) return { color: legendColor('dodatni'), label: dod.name }
+  const rok = p.find((x) => x.kind === 'rok')
+  if (rok) return { color: legendColor(rok.id), label: rok.name }
+  const rang = p.find((x) => x.kind === 'rangiranje')
+  if (rang) return { color: legendColor('rangiranje'), label: rang.name }
+  if (weekdayIdx === 6) return { color: legendColor('nedelja'), label: 'Nedelja' }
+  return null
+}

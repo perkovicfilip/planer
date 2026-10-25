@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useKind } from '../lib/store'
+import { store, useKind } from '../lib/store'
+import { distinctColor } from '../lib/colors'
 import type { Category, EventData, Item } from '../lib/types'
-import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, isWeekend, monthGrid, parse, today, fmtShort } from '../lib/dates'
-import { MAKEUPS, MILESTONES, PERIODS, examPeriod, isHoliday, noClasses, periodsOn } from '../data/ftn'
+import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, monthGrid, parse, today, fmtShort, weekday } from '../lib/dates'
+import { FTN_LEGEND, MAKEUPS, MILESTONES, ftnMark, periodsOn } from '../data/ftn'
 import { occursOn } from '../lib/logic'
 import { go } from '../lib/router'
 import { Button, Card, Dot, IconButton, PageHeader, Segmented, cx } from '../ui/kit'
@@ -56,35 +57,32 @@ function circleBg(colors: string[]) {
   return `conic-gradient(${colors.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`
 }
 
-function MiniDay({ date, mark, onClick }: { date: string; mark?: DayMark; onClick: () => void }) {
+function MiniDay({ date, mark, onClick, ftn }: { date: string; mark?: DayMark; onClick: () => void; ftn: boolean }) {
   const isToday = date === today()
-  const weekend = isWeekend(date)
-  const exam = examPeriod(date)
-  const holiday = isHoliday(date)
-  const bez = !holiday && noClasses(date)
+  const f = ftn ? ftnMark(date, weekday(date)) : null
   const filled = !!mark?.colors.length
   const n = parse(date).getDate()
   return (
     <button
       onClick={onClick}
-      title={titleFor(date, mark)}
-      className={cx('relative h-7 grid place-items-center', exam ? 'tint' : weekend && 'weekend')}
-      style={exam ? ({ '--tint': exam.tint } as React.CSSProperties) : undefined}
+      title={titleFor(date, mark, ftn)}
+      className="relative h-11 grid place-items-center hover:bg-paper-sunk/60 rounded-md"
+      style={f ? { background: f.color } : undefined}
     >
       <span
         className={cx(
-          'w-6 h-6 rounded-full grid place-items-center text-xs tabular',
-          filled ? 'text-white font-semibold' : holiday ? 'text-rose-600 font-semibold' : bez ? 'text-amber-600' : weekend ? 'text-ink-soft' : 'text-ink',
-          isToday && 'ring-2 ring-ink ring-offset-1 ring-offset-transparent',
+          'w-9 h-9 rounded-full grid place-items-center text-base tabular',
+          filled ? 'text-white font-bold' : f ? 'text-stone-900' : 'text-ink',
+          isToday && 'ring-2 ring-accent ring-offset-2 ring-offset-paper',
         )}
-        style={{ background: circleBg(mark?.colors ?? []) }}
+        style={{ background: circleBg(mark?.colors ?? []), textShadow: filled ? '0 1px 2px rgb(0 0 0 / 0.45)' : undefined }}
       >
         {n}
       </span>
       {!!mark?.bars.length && (
         <span className="absolute bottom-0.5 left-1 right-1 flex gap-px">
           {mark.bars.map((c) => (
-            <span key={c} className="h-[3px] flex-1 rounded-full" style={{ background: c }} />
+            <span key={c} className="h-[4px] flex-1 rounded-full" style={{ background: c }} />
           ))}
         </span>
       )}
@@ -92,41 +90,41 @@ function MiniDay({ date, mark, onClick }: { date: string; mark?: DayMark; onClic
   )
 }
 
-function titleFor(date: string, mark?: DayMark) {
+function titleFor(date: string, mark?: DayMark, ftn = false) {
   const lines = [fmtShort(date)]
-  for (const p of periodsOn(date)) lines.push(p.name)
-  const mk = MAKEUPS.find((m) => m.date === date)
-  if (mk) lines.push(`Nadoknada — radi se po rasporedu za ${DAYS_SHORT[mk.asWeekday]}`)
-  const ms = MILESTONES.find((m) => m.date === date)
-  if (ms) lines.push(ms.name)
+  if (ftn) {
+    for (const p of periodsOn(date)) lines.push(p.name)
+    const mk = MAKEUPS.find((m) => m.date === date)
+    if (mk) lines.push(`Nadoknada — radi se po rasporedu za ${DAYS_SHORT[mk.asWeekday]}`)
+    const ms = MILESTONES.find((m) => m.date === date)
+    if (ms) lines.push(ms.name)
+  }
   for (const e of mark?.events ?? []) lines.push(`• ${e.data.start ? e.data.start + ' ' : ''}${e.data.title}`)
   return lines.join('\n')
 }
 
-function MiniMonth({ y, m, marks }: { y: number; m: number; marks: Map<string, DayMark> }) {
+function MiniMonth({ y, m, marks, ftn }: { y: number; m: number; marks: Map<string, DayMark>; ftn: boolean }) {
   const rows = monthGrid(y, m)
   return (
     <div>
-      <div className="text-center text-sm font-semibold mb-0.5 capitalize">
+      <div className="text-center text-lg font-semibold mb-1 capitalize">
         {MONTHS[m]} <span className="text-ink-faint font-normal">{y}</span>
       </div>
-      <div className="grid grid-cols-7 text-xs text-ink-faint text-center mb-0.5">
+      <div className="grid grid-cols-7 text-sm text-ink-faint text-center mb-0.5">
         {DAYS_MIN.map((d, i) => (
-          <div key={i} className={cx(i >= 5 && 'weekend rounded-t')}>
-            {d}
-          </div>
+          <div key={i}>{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {rows.flat().map((d, i) =>
-          d ? <MiniDay key={d} date={d} mark={marks.get(d)} onClick={() => go('dan', d)} /> : <div key={'x' + i} className={cx(i % 7 >= 5 && 'weekend')} />,
+          d ? <MiniDay key={d} date={d} mark={marks.get(d)} ftn={ftn} onClick={() => go('dan', d)} /> : <div key={'x' + i} />,
         )}
       </div>
     </div>
   )
 }
 
-function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<string, DayMark>; onAdd: (d: string) => void }) {
+function MonthBig({ y, m, marks, onAdd, ftn }: { y: number; m: number; marks: Map<string, DayMark>; onAdd: (d: string) => void; ftn: boolean }) {
   const rows = monthGrid(y, m)
   const cats = useKind<Category>('category')
   const catMap = new Map(cats.map((c) => [c.id, c.data]))
@@ -134,34 +132,29 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
     <Card className="overflow-hidden">
       <div className="grid grid-cols-7 text-xs text-ink-faint text-center border-b border-line">
         {DAYS_SHORT.map((d, i) => (
-          <div key={d} className={cx('py-2', i >= 5 && 'weekend')}>
+          <div key={d} className="py-2">
             {d}
           </div>
         ))}
       </div>
       <div className="grid grid-cols-7">
         {rows.flat().map((d, i) => {
-          if (!d) return <div key={'x' + i} className={cx('min-h-[72px] border-b border-r border-line', i % 7 >= 5 && 'weekend')} />
-          const exam = examPeriod(d)
-          const holiday = isHoliday(d)
+          if (!d) return <div key={'x' + i} className="min-h-[72px] border-b border-r border-line" />
+          const f = ftn ? ftnMark(d, weekday(d)) : null
           const mark = marks.get(d)
           return (
             <div
               key={d}
               onClick={() => go('dan', d)}
-              title={titleFor(d, mark)}
-              className={cx(
-                'group min-h-[72px] md:min-h-[86px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative',
-                exam ? 'tint' : isWeekend(d) && 'weekend',
-              )}
-              style={exam ? ({ '--tint': exam.tint } as React.CSSProperties) : undefined}
+              title={titleFor(d, mark, ftn)}
+              className={cx('group min-h-[72px] md:min-h-[86px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative', f && 'text-stone-900')}
+              style={f ? { background: f.color } : undefined}
             >
               <div className="flex items-center justify-between">
                 <span
                   className={cx(
-                    'text-xs w-6 h-6 grid place-items-center rounded-full tabular',
-                    d === today() && 'bg-ink text-paper font-semibold',
-                    d !== today() && holiday && 'text-rose-600 font-semibold',
+                    'text-sm w-7 h-7 grid place-items-center rounded-full tabular',
+                    d === today() && 'bg-accent text-white font-semibold',
                   )}
                 >
                   {parse(d).getDate()}
@@ -201,17 +194,42 @@ function MonthBig({ y, m, marks, onAdd }: { y: number; m: number; marks: Map<str
   )
 }
 
+const START = { y: 2026, m: 10 } // 1. novembar 2026
+
+function defaultAnchor() {
+  const now = parse(today())
+  const cur = { y: now.getFullYear(), m: now.getMonth() }
+  return cur.y * 12 + cur.m < START.y * 12 + START.m ? START : cur
+}
+
+function loadFtn(): boolean {
+  try {
+    return localStorage.getItem('planer:ftn') === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function Kalendar({ param }: { param?: string }) {
   const [view, setView] = useState<View>(param === 'mesec' ? 'mesec' : 'godina')
-  const now = parse(today())
-  const [anchor, setAnchor] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  const [anchor, setAnchor] = useState(defaultAnchor)
   const [filter, setFilter] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
+  const [ftn, setFtnState] = useState(loadFtn)
+  const [newCat, setNewCat] = useState('')
+  const setFtn = (v: boolean) => {
+    setFtnState(v)
+    try {
+      localStorage.setItem('planer:ftn', v ? '1' : '0')
+    } catch {
+      /* nije bitno */
+    }
+  }
   const cats = useKind<Category>('category')
-  const sortedCats = [...cats].sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.order - b.data.order)
+  const sortedCats = [...cats].sort((a, b) => a.data.order - b.data.order)
 
   const months: { y: number; m: number }[] = []
-  const count = view === 'godina' ? 12 : 1
+  const count = view === 'godina' ? 6 : 1
   for (let i = 0; i < count; i++) {
     const t = anchor.m + i
     months.push({ y: anchor.y + Math.floor(t / 12), m: ((t % 12) + 12) % 12 })
@@ -222,21 +240,40 @@ export default function Kalendar({ param }: { param?: string }) {
   const marks = useMarks(from, to, filter)
 
   const shift = (dir: number) => {
-    const step = view === 'godina' ? 12 : 1
+    const step = view === 'godina' ? 6 : 1
     const t = anchor.m + dir * step
     setAnchor({ y: anchor.y + Math.floor(t / 12), m: ((t % 12) + 12) % 12 })
   }
 
   const title =
     view === 'godina'
-      ? `${MONTHS[months[0].m].slice(0, 3)} ${months[0].y} – ${MONTHS[last.m].slice(0, 3)} ${last.y}`
+      ? `${MONTHS[months[0].m]} ${months[0].y} – ${MONTHS[last.m]} ${last.y}`
       : `${MONTHS[anchor.m]} ${anchor.y}`
 
-  const upcomingPeriods = PERIODS.filter((p) => p.to >= from && p.from <= to && p.kind === 'rok')
-  const extraDates = PERIODS.filter((p) => p.to >= from && p.from <= to && p.kind === 'dodatni')
+  const addCat = () => {
+    if (!newCat.trim()) return
+    store.put<Category>('category', {
+      name: newCat.trim(),
+      color: distinctColor(cats.map((c) => c.data.color)),
+      group: 'ostalo',
+      order: cats.length + 1,
+    })
+    setNewCat('')
+  }
+
+  // FTN legenda: samo stavke koje se vide na ovim mesecima
+  const visibleFtn = ftn
+    ? FTN_LEGEND.filter((l) => {
+        for (let d = from; d <= to; d = addDays(d, 1)) {
+          const f = ftnMark(d, weekday(d))
+          if (f && f.color === l.color) return true
+        }
+        return false
+      })
+    : []
 
   return (
-    <div>
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
       <PageHeader
         title={<span className="capitalize">{title}</span>}
         right={
@@ -244,7 +281,7 @@ export default function Kalendar({ param }: { param?: string }) {
             <IconButton title="Nazad" onClick={() => shift(-1)}>
               <ChevronLeft size={18} />
             </IconButton>
-            <Button variant="ghost" onClick={() => setAnchor({ y: now.getFullYear(), m: now.getMonth() })}>
+            <Button variant="ghost" onClick={() => setAnchor(defaultAnchor())}>
               Danas
             </Button>
             <IconButton title="Napred" onClick={() => shift(1)}>
@@ -254,10 +291,13 @@ export default function Kalendar({ param }: { param?: string }) {
               value={view}
               onChange={setView}
               options={[
-                { value: 'godina', label: 'Godina' },
+                { value: 'godina', label: '6 meseci' },
                 { value: 'mesec', label: 'Mesec' },
               ]}
             />
+            <Button variant={ftn ? 'primary' : 'soft'} onClick={() => setFtn(!ftn)} title="Prikaži ispitne rokove, praznike i neradne dane sa FTN kalendara">
+              FTN kalendar
+            </Button>
             <Button variant="primary" onClick={() => setAdding(today())}>
               <Plus size={16} /> Događaj
             </Button>
@@ -265,71 +305,62 @@ export default function Kalendar({ param }: { param?: string }) {
         }
       />
 
-      <div className="lg:flex gap-4">
-        <div className="flex-1 min-w-0">
+      <div className="lg:flex gap-4 md:flex-1 md:min-h-0">
+        <div className="flex-1 min-w-0 md:overflow-y-auto">
           {view === 'godina' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
               {months.map((mm) => (
-                <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} />
+                <MiniMonth key={`${mm.y}-${mm.m}`} y={mm.y} m={mm.m} marks={marks} ftn={ftn} />
               ))}
             </div>
           ) : (
-            <MonthBig y={anchor.y} m={anchor.m} marks={marks} onAdd={setAdding} />
+            <MonthBig y={anchor.y} m={anchor.m} marks={marks} onAdd={setAdding} ftn={ftn} />
           )}
         </div>
 
         {/* Legenda */}
-        <aside className="lg:w-52 shrink-0 mt-4 lg:mt-0 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
+        <aside className="lg:w-56 shrink-0 mt-4 lg:mt-0 lg:overflow-y-auto">
           <Card className="p-3">
             <div className="text-sm font-semibold mb-2">Aktivnosti</div>
-            <div className="space-y-0">
-              <LegendRow active={filter === null} onClick={() => setFilter(null)} label="Sve" />
-              {sortedCats.map((c) => (
-                <LegendRow
-                  key={c.id}
-                  active={filter === c.id}
-                  onClick={() => setFilter(filter === c.id ? null : c.id)}
-                  label={c.data.name}
-                  color={c.data.color}
-                />
-              ))}
+            {sortedCats.length > 0 && (
+              <div className="space-y-0 mb-2">
+                <LegendRow active={filter === null} onClick={() => setFilter(null)} label="Sve" />
+                {sortedCats.map((c) => (
+                  <LegendRow
+                    key={c.id}
+                    active={filter === c.id}
+                    onClick={() => setFilter(filter === c.id ? null : c.id)}
+                    label={c.data.name}
+                    color={c.data.color}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1">
+              <input
+                className="flex-1 min-w-0 text-sm py-1"
+                placeholder="Nova aktivnost…"
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCat()}
+              />
+              <Button className="px-2" onClick={addCat} disabled={!newCat.trim()} title="Dodaj aktivnost">
+                <Plus size={15} />
+              </Button>
             </div>
-            <a href="#/podesavanja" className="block text-xs text-accent mt-3">
-              Dodaj / izmeni aktivnosti →
-            </a>
-            <div className="text-sm font-semibold mt-5 mb-2">Oznake</div>
-            <div className="space-y-1.5 text-xs text-ink-soft">
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded weekend border border-line" /> Vikend
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 text-center font-semibold text-rose-600">7</span> Neradni dan / praznik
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 text-center text-amber-600">7</span> Nema nastave
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-[3px] rounded bg-violet-500" /> Višednevno (npr. na putu)
-              </div>
-              {upcomingPeriods.map((p) => (
-                <div key={p.id} className="flex items-center gap-2">
-                  <span className="w-4 h-4 rounded tint border border-line" style={{ '--tint': p.tint } as React.CSSProperties} />
-                  <span>
-                    {p.name}
-                    <span className="text-ink-faint"> · {fmtShort(p.from)}–{fmtShort(p.to)}</span>
-                  </span>
+            {ftn && visibleFtn.length > 0 && (
+              <>
+                <div className="text-sm font-semibold mt-4 mb-2">FTN kalendar</div>
+                <div className="space-y-1.5 text-xs text-ink-soft">
+                  {visibleFtn.map((l) => (
+                    <div key={l.key} className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded shrink-0 border border-black/10" style={{ background: l.color }} />
+                      <span>{l.label}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {extraDates.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded tint border border-line shrink-0" style={{ '--tint': extraDates[0].tint } as React.CSSProperties} />
-                  <span>
-                    Dodatni rokovi (samo za odslušanu nastavu)
-                    <span className="text-ink-faint"> · {extraDates.map((p) => fmtShort(p.from)).join(', ')}</span>
-                  </span>
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </Card>
         </aside>
       </div>

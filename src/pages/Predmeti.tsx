@@ -6,6 +6,7 @@ import { espbStats } from '../lib/goals'
 import { RASPORED_SUBJECTS, ALL_GROUPS } from '../data/raspored'
 import { PALETTE } from '../data/defaults'
 import { iso } from '../lib/dates'
+import { distinctColor } from '../lib/colors'
 import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, Progress, SectionTitle, cx } from '../ui/kit'
 
 const blank = (): SubjectData => ({
@@ -176,7 +177,7 @@ function SubjectEditor({ id, onClose }: { id: string | 'new' | null; onClose: ()
   if (id !== lastId) {
     setLastId(id)
     setD(existing?.data ?? blank())
-    setColor(cat?.data.color ?? PALETTE[Math.floor(Math.random() * PALETTE.length)])
+    setColor(cat?.data.color ?? distinctColor(store.list<Category>('category').map((c) => c.data.color)))
   }
   const set = <K extends keyof SubjectData>(k: K, v: SubjectData[K]) => setD((x) => ({ ...x, [k]: v }))
 

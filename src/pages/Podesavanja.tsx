@@ -5,6 +5,7 @@ import { supabase, LOCAL_MODE } from '../lib/supabase'
 import type { Category, CategoryGroup, GoalData, Kind } from '../lib/types'
 import { useSettings, learnedGap } from '../lib/logic'
 import { addDays, iso } from '../lib/dates'
+import { distinctColor } from '../lib/colors'
 import { isNative, requestNotificationPermission, rescheduleNow } from '../native/bridge'
 import { Button, Card, ColorPicker, Field, IconButton, Modal, PageHeader, SectionTitle } from '../ui/kit'
 
@@ -167,7 +168,7 @@ export default function Podesavanja() {
       <div className="break-inside-avoid">
       <SectionTitle
         action={
-          <Button variant="ghost" onClick={() => setCatEdit({ data: { name: '', color: '#3b82f6', group: 'ostalo', order: cats.length + 1 } })}>
+          <Button variant="ghost" onClick={() => setCatEdit({ data: { name: '', color: distinctColor(cats.map((c) => c.data.color)), group: 'ostalo', order: cats.length + 1 } })}>
             <Plus size={15} /> Aktivnost
           </Button>
         }

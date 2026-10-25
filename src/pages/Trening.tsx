@@ -19,6 +19,7 @@ import {
   listActivities,
 } from '../lib/activities'
 import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, cx } from '../ui/kit'
+import { distinctColor } from '../lib/colors'
 
 // ======================================================================
 // Trening: nedeljni raspored aktivnosti + treninzi + traka dana
@@ -189,11 +190,7 @@ function ActivitiesCard() {
     }))
   return (
     <div>
-      <div className="flex justify-end mb-2">
-        <Button variant="primary" onClick={() => setEdit('new')}>
-          <Plus size={15} /> Aktivnost
-        </Button>
-      </div>
+
       {acts.length === 0 && <Empty>Dodaj prvu aktivnost — npr. teretana, plivanje, trčanje.</Empty>}
       <div className="space-y-3">
         {acts.map((a) => (
@@ -247,6 +244,9 @@ function ActivitiesCard() {
           </div>
         ))}
       </div>
+      <Button variant="primary" className="mt-4" onClick={() => setEdit('new')}>
+        <Plus size={15} /> Aktivnost
+      </Button>
       <ActivityEditor item={edit} count={acts.length} onClose={() => setEdit(null)} />
     </div>
   )
@@ -254,7 +254,7 @@ function ActivitiesCard() {
 
 function ActivityEditor({ item, count, onClose }: { item: Item<ActivityData> | 'new' | null; count: number; onClose: () => void }) {
   const existing = item && item !== 'new' ? item : undefined
-  const blank = (): ActivityData => ({ name: '', color: '#10b981', days: [], order: count + 1 })
+  const blank = (): ActivityData => ({ name: '', color: distinctColor(listActivities().map((a) => a.data.color)), days: [], order: count + 1 })
   const [d, setD] = useState<ActivityData>(blank())
   const [last, setLast] = useState<typeof item>(null)
   if (item !== last) {

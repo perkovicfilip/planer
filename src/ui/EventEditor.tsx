@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { store, useKind } from '../lib/store'
 import { iso } from '../lib/dates'
+import { distinctColor } from '../lib/colors'
 import type { Category, EventData, Repeat } from '../lib/types'
 import { Button, Field, Modal, Segmented, cx } from './kit'
 
@@ -56,6 +57,18 @@ export function EventEditor({
   }, [open, eventId, date, start])
 
   const set = <K extends keyof EventData>(k: K, v: EventData[K]) => setD((x) => ({ ...x, [k]: v }))
+  const [newCat, setNewCat] = useState('')
+  const addCat = () => {
+    if (!newCat.trim()) return
+    const id = store.put<Category>('category', {
+      name: newCat.trim(),
+      color: distinctColor(cats.map((c) => c.data.color)),
+      group: 'ostalo',
+      order: cats.length + 1,
+    })
+    set('categoryId', id)
+    setNewCat('')
+  }
 
   function save() {
     if (!d.title.trim()) return
@@ -141,6 +154,23 @@ export function EventEditor({
               {c.data.name}
             </button>
           ))}
+        </div>
+        <div className="flex gap-1.5 mt-2">
+          <input
+            className="flex-1 min-w-0 text-sm py-1"
+            placeholder="+ Nova aktivnost (npr. Wolt, Analiza 2…)"
+            value={newCat}
+            onChange={(e) => setNewCat(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addCat()
+              }
+            }}
+          />
+          <Button onClick={addCat} disabled={!newCat.trim()}>
+            Dodaj
+          </Button>
         </div>
       </Field>
 

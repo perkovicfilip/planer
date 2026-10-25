@@ -52,3 +52,12 @@ export function ensureDefaults() {
   }
   store.put('meta', { setupDone: true }, 'setup-done')
 }
+
+/** Jednokratno: kalendar kreće prazan — brišu se sve aktivnosti (kategorije) i događaji. */
+export function ensureCalendarReset() {
+  if (store.status !== 'sinhronizovano' && store.status !== 'lokalno') return
+  if (store.get('calendar-reset-1')) return
+  for (const c of store.list('category')) store.remove(c.id)
+  for (const e of store.list('event')) store.remove(e.id)
+  store.put('meta', { done: true }, 'calendar-reset-1')
+}
