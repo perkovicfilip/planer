@@ -373,7 +373,7 @@ function LegendRow({ active, onClick, label, color, onDelete }: { active: boolea
         <span className="truncate">{label}</span>
       </button>
       {onDelete && (
-        <button title="Obriši događaj" onClick={onDelete} className="px-1.5 text-ink-faint hover:text-rose-600 opacity-0 group-hover:opacity-100">
+        <button title="Obriši događaj" onClick={onDelete} className="px-1.5 text-ink-faint hover:text-rose-600">
           <X size={15} />
         </button>
       )}
