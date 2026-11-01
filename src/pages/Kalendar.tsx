@@ -136,7 +136,7 @@ function DayTip() {
   const x = Math.min(Math.max(tip.x, 170), window.innerWidth - 170)
   return (
     <div
-      className="fixed z-40 pointer-events-none bg-paper-raised border border-line rounded-xl shadow-xl px-3 py-2 min-w-[180px] max-w-[320px] space-y-1.5"
+      className="fixed z-40 pointer-events-none bg-paper-raised border border-line rounded-xl shadow-xl px-3 py-2 max-w-[360px] space-y-1.5"
       style={{ left: x, top: below ? tip.bottom + 6 : undefined, bottom: below ? undefined : window.innerHeight - tip.top + 6, transform: 'translateX(-50%)' }}
     >
       {rows.map((r, i) => (
