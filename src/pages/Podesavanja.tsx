@@ -48,7 +48,21 @@ export default function Podesavanja() {
       const json = JSON.parse(await file.text())
       const items: { id?: string; kind: Kind; data: unknown }[] = Array.isArray(json) ? json : json.items
       if (!Array.isArray(items)) throw new Error('format')
-      const valid = items.filter((i) => i && KINDS.includes(i.kind) && i.data !== undefined)
+      let valid = items.filter((i) => i && KINDS.includes(i.kind) && i.data !== undefined)
+      // kategorija sa istim imenom koja već postoji se ne pravi ponovo — upisi se vežu za postojeću
+      const remap = new Map<string, string>()
+      const existing = store.list<Category>('category')
+      valid = valid.filter((i) => {
+        if (i.kind !== 'category' || !i.id) return true
+        const name = String((i.data as Category).name ?? '').trim().toLowerCase()
+        const same = existing.find((c) => c.id !== i.id && c.data.name.trim().toLowerCase() === name)
+        if (same) remap.set(i.id, same.id)
+        return !same
+      })
+      valid = valid.map((i) => {
+        const d = i.data as { categoryId?: string }
+        return d && d.categoryId && remap.has(d.categoryId) ? { ...i, data: { ...d, categoryId: remap.get(d.categoryId) } } : i
+      })
       store.bulk(valid.map((i) => ({ id: i.id, kind: i.kind, data: i.data })))
       setMsg(`Uvezeno ${valid.length} stavki.`)
     } catch {
