@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { store, useKind } from '../lib/store'
 import { distinctColor } from '../lib/colors'
 import type { Category, EventData, Item } from '../lib/types'
-import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, monthGrid, parse, today, fmtShort, weekday } from '../lib/dates'
-import { FTN_LEGEND, MAKEUPS, MILESTONES, ftnMark, periodsOn } from '../data/ftn'
+import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, monthGrid, parse, today, weekday } from '../lib/dates'
+import { FTN_LEGEND, MILESTONES, ftnMark, periodsOn } from '../data/ftn'
 import { occursOn } from '../lib/logic'
 import { Button, Card, Dot, IconButton, PageHeader, Segmented, cx } from '../ui/kit'
 import { EventEditor } from '../ui/EventEditor'
@@ -64,7 +64,7 @@ function MiniDay({ date, mark, onClick, ftn }: { date: string; mark?: DayMark; o
   return (
     <button
       onClick={onClick}
-      title={titleFor(date, mark, ftn)}
+      {...hoverProps(date, mark, ftn)}
       className="relative h-9 grid place-items-center hover:bg-paper-sunk/60 rounded-md"
       style={f ? { background: f.color } : undefined}
     >
@@ -89,22 +89,66 @@ function MiniDay({ date, mark, onClick, ftn }: { date: string; mark?: DayMark; o
   )
 }
 
-function titleFor(date: string, mark?: DayMark, ftn = false) {
-  const lines = [fmtShort(date)]
-  if (ftn) {
-    for (const p of periodsOn(date)) lines.push(p.name)
-    const mk = MAKEUPS.find((m) => m.date === date)
-    if (mk) lines.push(`Nadoknada — radi se po rasporedu za ${DAYS_SHORT[mk.asWeekday]}`)
-    const ms = MILESTONES.find((m) => m.date === date)
-    if (ms) lines.push(ms.name)
+type Tip = { date: string; mark?: DayMark; ftn: boolean; x: number; top: number; bottom: number } | null
+let setTipGlobal: (t: Tip) => void = () => {}
+
+function hoverProps(date: string, mark: DayMark | undefined, ftn: boolean) {
+  return {
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
+      const r = e.currentTarget.getBoundingClientRect()
+      setTipGlobal({ date, mark, ftn, x: r.left + r.width / 2, top: r.top, bottom: r.bottom })
+    },
+    onMouseLeave: () => setTipGlobal(null),
+    onMouseDown: () => setTipGlobal(null),
   }
-  for (const e of mark?.events ?? []) {
-    const cat = e.data.categoryId ? store.get<Category>(e.data.categoryId)?.data.name : undefined
-    const time = e.data.start ? `  ${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : ''
-    lines.push(`• ${e.data.title}${time}`)
-    if (cat && cat !== e.data.title) lines.push(`   ${cat}`)
+}
+
+function DayTip() {
+  const [tip, setTip] = useState<Tip>(null)
+  useEffect(() => {
+    setTipGlobal = setTip
+    const hide = () => setTip(null)
+    window.addEventListener('scroll', hide, true)
+    return () => {
+      setTipGlobal = () => {}
+      window.removeEventListener('scroll', hide, true)
+    }
+  }, [])
+  if (!tip) return null
+  const rows: { color: string; square?: boolean; title: string; sub?: string; time?: string }[] = []
+  if (tip.ftn) {
+    const f = ftnMark(tip.date, weekday(tip.date))
+    for (const p of periodsOn(tip.date)) if (f) rows.push({ color: f.color, square: true, title: p.name })
+    const ms = MILESTONES.find((m) => m.date === tip.date)
+    if (ms) rows.push({ color: '#94a3b8', square: true, title: ms.name })
   }
-  return lines.join('\n')
+  for (const e of tip.mark?.events ?? []) {
+    const cat = e.data.categoryId ? store.get<Category>(e.data.categoryId)?.data : undefined
+    rows.push({
+      color: cat?.color ?? '#64748b',
+      title: e.data.title,
+      sub: cat && cat.name !== e.data.title ? cat.name : undefined,
+      time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
+    })
+  }
+  if (!rows.length) return null
+  const below = tip.bottom + 40 * rows.length + 40 < window.innerHeight
+  const x = Math.min(Math.max(tip.x, 170), window.innerWidth - 170)
+  return (
+    <div
+      className="fixed z-40 pointer-events-none bg-paper-raised border border-line rounded-xl shadow-xl px-3 py-2 min-w-[180px] max-w-[320px] space-y-1.5"
+      style={{ left: x, top: below ? tip.bottom + 6 : undefined, bottom: below ? undefined : window.innerHeight - tip.top + 6, transform: 'translateX(-50%)' }}
+    >
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-2.5 text-base leading-snug">
+          <span className={cx('w-3.5 h-3.5 shrink-0', r.square ? 'rounded' : 'rounded-full')} style={{ background: r.color }} />
+          <span className="font-semibold">{r.title}</span>
+          {r.sub && <span className="text-ink-soft">{r.sub}</span>}
+          {r.time && <span className="ml-auto pl-3 text-sm text-ink-faint tabular">{r.time}</span>}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function MiniMonth({ y, m, marks, ftn, onPick }: { y: number; m: number; marks: Map<string, DayMark>; ftn: boolean; onPick: (d: string) => void }) {
@@ -150,7 +194,7 @@ function MonthBig({ y, m, marks, onAdd, ftn }: { y: number; m: number; marks: Ma
             <div
               key={d}
               onClick={() => onAdd(d)}
-              title={titleFor(d, mark, ftn)}
+              {...hoverProps(d, mark, ftn)}
               className={cx('group min-h-[72px] md:min-h-[86px] border-b border-r border-line p-1 cursor-pointer hover:bg-paper-sunk/50 relative', f && 'text-stone-900')}
               style={f ? { background: f.color } : undefined}
             >
@@ -379,6 +423,7 @@ export default function Kalendar({ param }: { param?: string }) {
         </aside>
       </div>
 
+      <DayTip />
       <EventEditor open={!!adding} onClose={() => setAdding(null)} date={adding ?? undefined} />
     </div>
   )
