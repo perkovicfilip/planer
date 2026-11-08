@@ -141,7 +141,7 @@ export default function Danas() {
                 {upcoming.map((u) => {
                   const d = daysBetween(date, u.date)
                   return (
-                    <li key={u.id} className="flex items-center gap-2.5 py-2 cursor-pointer" onClick={() => go('dan', u.date)}>
+                    <li key={u.id} className="flex items-center gap-2.5 py-2">
                       <Dot color={u.color} size={8} />
                       <div className="flex-1 min-w-0">
                         <div className="text-base leading-tight truncate">

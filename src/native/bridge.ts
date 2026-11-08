@@ -209,7 +209,7 @@ async function schedule() {
           const start = toMin(e.data.start ?? '09:00')
           const when = at(date, start - before)
           const label = before >= 1440 ? `za ${Math.round(before / 1440)} d` : before >= 60 ? `za ${Math.round(before / 60)} h` : `za ${before} min`
-          push(`ev:${e.id}:${date}:${before}`, e.data.title, `${label}${e.data.start ? ' · ' + e.data.start : ''}`, when, `#/dan/${date}`)
+          push(`ev:${e.id}:${date}:${before}`, e.data.title, `${label}${e.data.start ? ' · ' + e.data.start : ''}`, when, `#/danas`)
         }
       }
     }

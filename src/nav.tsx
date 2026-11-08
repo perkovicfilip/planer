@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import {
   CalendarDays,
-  CalendarClock,
   Home,
   UtensilsCrossed,
   Dumbbell,
@@ -20,7 +19,6 @@ import type { Route } from './lib/router'
 export const NAV: { route: Route; label: string; icon: ReactNode; mobile?: boolean }[] = [
   { route: 'danas', label: 'Danas', icon: <Home size={20} />, mobile: true },
   { route: 'kalendar', label: 'Kalendar', icon: <CalendarDays size={20} />, mobile: true },
-  { route: 'dan', label: 'Organizator', icon: <CalendarClock size={20} /> },
   { route: 'ishrana', label: 'Ishrana', icon: <UtensilsCrossed size={20} />, mobile: true },
   { route: 'trening', label: 'Trening', icon: <Dumbbell size={20} />, mobile: true },
   { route: 'finansije', label: 'Finansije', icon: <Wallet size={20} /> },
