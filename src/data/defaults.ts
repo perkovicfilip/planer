@@ -100,3 +100,32 @@ export function ensureFaksGoal() {
   else store.put<G>('goal', { title: 'Faks', type: 'espb', target: 240, avgTarget: 8, order: 0, color: '#2563eb' })
   store.put('meta', { done: true }, 'cilj-faks-1')
 }
+
+/** Jednokratno: „BP 1“ → „BP1“ (i slično), spajanje duplikata koji su tako nastali. */
+export function ensureNameFix() {
+  if (store.status !== 'sinhronizovano' && store.status !== 'lokalno') return
+  if (store.get('naziv-bp1-1')) return
+  const norm = (n: string) => n.trim().replace(/([A-Za-zČĆŠĐŽčćšđž])\s+(\d)/g, '$1$2')
+  const events = store.list<{ title: string; categoryId?: string }>('event')
+  const cats = store.list<Category>('category')
+  const byName = new Map<string, string>()
+  // prvo kategorije koje imaju upise, da one ostanu
+  const used = (id: string) => events.some((e) => e.data.categoryId === id)
+  for (const c of [...cats].sort((a, b) => Number(used(b.id)) - Number(used(a.id)))) {
+    const name = norm(c.data.name)
+    const key = name.toLowerCase()
+    const keep = byName.get(key)
+    if (keep) {
+      for (const e of events) if (e.data.categoryId === c.id) store.update<{ categoryId?: string }>(e.id, (d) => ({ ...d, categoryId: keep }))
+      store.remove(c.id)
+      continue
+    }
+    byName.set(key, c.id)
+    if (name !== c.data.name) store.update<Category>(c.id, (d) => ({ ...d, name }))
+  }
+  for (const e of events) {
+    const t = norm(e.data.title)
+    if (t !== e.data.title && byName.has(t.toLowerCase())) store.update<{ title: string }>(e.id, (d) => ({ ...d, title: t }))
+  }
+  store.put('meta', { done: true }, 'naziv-bp1-1')
+}
