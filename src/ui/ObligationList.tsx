@@ -34,7 +34,6 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
               o.done ? 'meal-done' : 'meal-todo',
             )}
           >
-            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: o.color }} />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-base leading-snug truncate">{o.title}</div>
               {o.sub && <div className="text-xs opacity-70 truncate">{o.sub}</div>}
