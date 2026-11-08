@@ -3,7 +3,7 @@ import { useKind, useVersion } from '../lib/store'
 import type { Category, EventData, GoalData } from '../lib/types'
 import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
 import { occursOn, useSettings } from '../lib/logic'
-import { goalProgress } from '../lib/goals'
+import { avgProgress, goalProgress } from '../lib/goals'
 import { PERIODS } from '../data/ftn'
 import { go } from '../lib/router'
 import { Card, Dot, cx } from '../ui/kit'
@@ -74,6 +74,7 @@ export default function Danas() {
         <button onClick={() => go('ciljevi')} className="flex gap-4 mb-3 text-left w-full" title="Ciljevi">
           {goals.map((g) => {
             const p = goalProgress(g.data)
+            const a = avgProgress(g.data)
             return (
               <div key={g.id} className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2">
                 <div className="flex justify-between text-sm font-medium">
@@ -84,6 +85,14 @@ export default function Danas() {
                   <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
                 </div>
                 <div className="text-xs text-ink-faint tabular truncate mt-1">{p.text}</div>
+                {a && (
+                  <>
+                    <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
+                      <div className="h-full rounded-full" style={{ width: `${a.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
+                    </div>
+                    <div className="text-xs text-ink-faint tabular truncate mt-1">{a.text}</div>
+                  </>
+                )}
               </div>
             )
           })}

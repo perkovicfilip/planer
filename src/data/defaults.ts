@@ -88,3 +88,15 @@ export function ensureEspbFix() {
   if (it && it.data.baseEspb === 120) store.update<{ baseEspb?: number }>(it.id, (d) => ({ ...d, baseEspb: 124 }))
   store.put('meta', { done: true }, 'espb-124')
 }
+
+/** Jednokratno: cilj „Faks“ — svih 240 ESPB i prosek preko 8.00. */
+export function ensureFaksGoal() {
+  if (store.status !== 'sinhronizovano' && store.status !== 'lokalno') return
+  if (store.get('cilj-faks-1')) return
+  type G = { title: string; type: string; target: number; avgTarget?: number; order: number; color?: string; deadline?: string }
+  const goals = store.list<G>('goal')
+  const ex = goals.find((g) => g.data.type === 'espb')
+  if (ex) store.update<G>(ex.id, (d) => ({ ...d, title: 'Faks', target: 240, avgTarget: 8 }))
+  else store.put<G>('goal', { title: 'Faks', type: 'espb', target: 240, avgTarget: 8, order: 0, color: '#2563eb' })
+  store.put('meta', { done: true }, 'cilj-faks-1')
+}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Pencil } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
 import type { GoalData, GoalType } from '../lib/types'
-import { goalProgress, fmt, espbInApp, latestWeight, espbStats } from '../lib/goals'
+import { avgProgress, goalProgress, fmt, espbInApp, latestWeight, espbStats } from '../lib/goals'
 import { balance, hasTransactions } from '../lib/finance'
 import { getSettings } from '../lib/logic'
 import { DEFAULT_SETTINGS, type SettingsData, type WeightData } from '../lib/types'
@@ -56,6 +56,18 @@ export default function Ciljevi() {
                 <Progress value={p.pct} max={100} color={g.data.color} height={10} />
               </div>
               <div className="text-xs text-ink-faint mt-1.5">{Math.round(p.pct)}% puta</div>
+              {(() => {
+                const a = avgProgress(g.data)
+                if (!a) return null
+                return (
+                  <>
+                    <div className="text-lg font-semibold tabular mt-3">{a.text.replace('prosek ', 'Prosek ')}</div>
+                    <div className="mt-2">
+                      <Progress value={a.pct} max={100} color={g.data.color} height={10} />
+                    </div>
+                  </>
+                )
+              })()}
               {manual && (
                 <div className="flex gap-2 mt-3">
                   <input
@@ -193,6 +205,18 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
           <input type="number" className="w-full" disabled={d.type === 'predmeti'} value={now} onChange={(e) => setNow(e.target.value)} />
         </Field>
       </div>
+      {d.type === 'espb' && (
+        <Field label="Ciljni prosek (opciono)">
+          <input
+            type="number"
+            step="0.01"
+            className="w-full"
+            placeholder="npr. 8.00"
+            value={d.avgTarget ?? ''}
+            onChange={(e) => set('avgTarget', e.target.value ? Number(e.target.value.replace(',', '.')) : undefined)}
+          />
+        </Field>
+      )}
       {(d.type === 'novac' || d.type === 'custom') && (
         <Field label="Jedinica">
           <input className="w-full" placeholder={d.type === 'novac' ? 'din' : 'npr. knjiga'} value={d.unit ?? ''} onChange={(e) => set('unit', e.target.value)} />

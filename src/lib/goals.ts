@@ -57,6 +57,15 @@ export function goalProgress(g: GoalData): { current: number | null; pct: number
   return { current, pct, text: `${fmt(current)} / ${fmt(g.target)} ${unit}`.trim() }
 }
 
+/** Prosek kao deo cilja za faks (skala od 6 do ciljnog proseka). */
+export function avgProgress(g: GoalData): { pct: number; text: string } | null {
+  if (g.type !== 'espb' || !g.avgTarget) return null
+  const avg = espbStats().average
+  if (avg === null) return { pct: 0, text: `prosek cilj ${g.avgTarget.toFixed(2)}` }
+  const pct = Math.max(0, Math.min(100, ((avg - 6) / (g.avgTarget - 6)) * 100))
+  return { pct, text: `prosek ${avg.toFixed(2)} / ${g.avgTarget.toFixed(2)}` }
+}
+
 export function fmt(n: number) {
   return Number.isInteger(n) ? n.toLocaleString('sr-Latn-RS') : n.toLocaleString('sr-Latn-RS', { maximumFractionDigits: 1 })
 }

@@ -177,6 +177,7 @@ export interface GoalData {
   start?: number
   current?: number // za ručne ciljeve
   unit?: string
+  avgTarget?: number // za ESPB cilj: ciljni prosek
   deadline?: string
   order: number
   color?: string
