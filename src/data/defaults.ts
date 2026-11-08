@@ -1,4 +1,5 @@
 import { store } from '../lib/store'
+import { distinctColor } from '../lib/colors'
 import type { Category, HabitData, WeekPlanData } from '../lib/types'
 
 // Osnovne kategorije i navike koje se prave pri prvom pokretanju.
@@ -60,4 +61,21 @@ export function ensureCalendarReset() {
   for (const c of store.list('category')) store.remove(c.id)
   for (const e of store.list('event')) store.remove(e.id)
   store.put('meta', { done: true }, 'calendar-reset-1')
+}
+
+/** Jednokratno: događaji za nepoložene predmete zimskog semestra (3, 5. i 7. semestar). */
+export const WINTER_SUBJECTS = ['MA2', 'MO', 'NANS', 'PP', 'BP1', 'BP2', 'RG', 'PS', 'SC', 'ISA', 'Stručna praksa']
+export function ensureWinterSubjects() {
+  if (store.status !== 'sinhronizovano' && store.status !== 'lokalno') return
+  if (store.get('zima-predmeti-1')) return
+  const cats = store.list<Category>('category')
+  const colors = cats.map((c) => c.data.color)
+  let order = cats.length + 1
+  for (const name of WINTER_SUBJECTS) {
+    if (cats.some((c) => c.data.name.trim().toLowerCase() === name.toLowerCase())) continue
+    const color = distinctColor(colors)
+    colors.push(color)
+    store.put<Category>('category', { name, color, group: 'fakultet', order: order++ })
+  }
+  store.put('meta', { done: true }, 'zima-predmeti-1')
 }
