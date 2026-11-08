@@ -28,37 +28,35 @@ export default function Danas() {
   const cats = useKind<Category>('category')
   const [hideDone, setHideDone] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [allUpcoming, setAllUpcoming] = useState(false)
 
-  // Uskoro: ispiti, kolokvijumi i ostalo sa fakulteta u narednih 60 dana
+  // Uskoro: sve iz kalendara u narednih 14 (ili 90) dana
   const catMap = new Map(cats.map((c) => [c.id, c.data]))
-  const horizon = addDays(date, 60)
-  const upcoming: { date: string; title: string; sub?: string; color: string; id: string }[] = []
+  const horizon = addDays(date, allUpcoming ? 90 : 14)
+  const upcoming: { date: string; title: string; sub?: string; time?: string; color: string; id: string }[] = []
   for (const e of events) {
+    const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+    const sub = c && c.name !== e.data.title ? c.name : undefined
     if (e.data.repeat === 'yearly') {
-      // rođendani i godišnjice: sledeće pojavljivanje
       let next = date.slice(0, 4) + e.data.date.slice(4)
       if (next < date) next = String(Number(date.slice(0, 4)) + 1) + e.data.date.slice(4)
-      if (next <= addDays(date, 30)) {
-        const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
-        upcoming.push({ date: next, title: e.data.title, color: c?.color ?? '#f97316', id: e.id + next })
-      }
+      if (next <= horizon) upcoming.push({ date: next, title: e.data.title, sub, color: c?.color ?? '#f97316', id: e.id + next })
       continue
     }
     if (e.data.repeat !== 'none') continue
-    if (e.data.date < date || e.data.date > horizon) continue
-    const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
-    const important = c?.group === 'fakultet' || /ispit|kolokv|klk|rok|predaja|odbrana|rođendan|rodjendan/i.test(e.data.title) || !!e.data.endDate
-    if (!important) continue
+    const last = e.data.endDate ?? e.data.date
+    if (last < date || e.data.date > horizon) continue
     upcoming.push({
-      date: e.data.date,
+      date: e.data.date < date ? date : e.data.date,
       title: e.data.title,
-      sub: c && c.group === 'fakultet' && !e.data.title.includes(c.name) ? c.name : undefined,
+      sub,
+      time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
       color: c?.color ?? '#64748b',
       id: e.id,
     })
   }
   upcoming.sort((a, b) => a.date.localeCompare(b.date))
-  const nextPeriod = PERIODS.filter((p) => p.kind === 'rok' && p.to >= date).sort((a, b) => a.from.localeCompare(b.from))[0]
+  const nextPeriod = PERIODS.filter((p) => p.kind === 'rok' && p.to >= date && p.from <= horizon).sort((a, b) => a.from.localeCompare(b.from))[0]
   const onTrip = events.find((e) => e.data.endDate && occursOn(e.data, date))
 
   return (
@@ -122,12 +120,15 @@ export default function Danas() {
 
         {/* Uskoro */}
         <Card className="flex flex-col min-h-0">
-          <div className="px-4 pt-3 pb-1">
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <h2 className="text-base font-semibold">Uskoro</h2>
+            <button onClick={() => setAllUpcoming(!allUpcoming)} className="text-xs text-accent">
+              {allUpcoming ? 'Samo 14 dana' : 'Narednih 90 dana'}
+            </button>
           </div>
           <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
             {upcoming.length === 0 && !nextPeriod ? (
-              <div className="text-sm text-ink-faint py-3">Ništa važno u narednih 60 dana.</div>
+              <div className="text-sm text-ink-faint py-3">{allUpcoming ? 'Ništa u narednih 90 dana.' : 'Ništa u narednih 14 dana.'}</div>
             ) : (
               <ul className="divide-y divide-line">
                 {upcoming.map((u) => {
@@ -139,6 +140,7 @@ export default function Danas() {
                         <div className="text-base leading-tight truncate">{u.title}</div>
                         <div className="text-xs text-ink-faint truncate">
                           {fmtShort(u.date)}
+                          {u.time && ` · ${u.time}`}
                           {u.sub && ` · ${u.sub}`}
                         </div>
                       </div>
