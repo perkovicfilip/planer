@@ -79,3 +79,12 @@ export function ensureWinterSubjects() {
   }
   store.put('meta', { done: true }, 'zima-predmeti-1')
 }
+
+/** Jednokratno: ispravka početnih ESPB (120 → 124). */
+export function ensureEspbFix() {
+  if (store.status !== 'sinhronizovano' && store.status !== 'lokalno') return
+  if (store.get('espb-124')) return
+  const it = store.list<{ baseEspb?: number }>('settings').sort((a, b) => a.id.localeCompare(b.id))[0]
+  if (it && it.data.baseEspb === 120) store.update<{ baseEspb?: number }>(it.id, (d) => ({ ...d, baseEspb: 124 }))
+  store.put('meta', { done: true }, 'espb-124')
+}

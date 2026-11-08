@@ -20,7 +20,7 @@ import {
 import { supabase, LOCAL_MODE, DEMO } from './lib/supabase'
 import { store, useSyncStatus } from './lib/store'
 import { useRoute, go, type Route } from './lib/router'
-import { ensureDefaults, ensureCalendarReset, ensureWinterSubjects } from './data/defaults'
+import { ensureDefaults, ensureCalendarReset, ensureWinterSubjects, ensureEspbFix } from './data/defaults'
 import { ensureActivities } from './lib/activities'
 import { useSettings } from './lib/logic'
 import { cx } from './ui/kit'
@@ -60,6 +60,7 @@ export default function App() {
         ensureActivities()
         ensureCalendarReset()
         ensureWinterSubjects()
+        ensureEspbFix()
         setReady(true)
       })
       return
@@ -78,6 +79,7 @@ export default function App() {
         ensureActivities()
         ensureCalendarReset()
         ensureWinterSubjects()
+        ensureEspbFix()
       setReady(true)
     })
     return () => store.stop()
