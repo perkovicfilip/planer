@@ -108,9 +108,20 @@ export default function Danas() {
         <Card className="flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <h2 className="text-base font-semibold">Uskoro</h2>
-            <button onClick={() => setAllUpcoming(!allUpcoming)} className="text-xs text-accent">
-              {allUpcoming ? 'Samo 14 dana' : 'Narednih 90 dana'}
-            </button>
+            <div className="flex rounded-lg bg-paper-sunk p-0.5 text-xs">
+              {[14, 90].map((n) => {
+                const on = (n === 90) === allUpcoming
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setAllUpcoming(n === 90)}
+                    className={cx('px-2.5 py-1 rounded-md', on ? 'bg-paper-raised font-semibold shadow-sm' : 'text-ink-faint hover:text-ink')}
+                  >
+                    {n} dana
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
             {upcoming.length === 0 && !nextPeriod ? (
