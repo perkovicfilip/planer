@@ -26,7 +26,7 @@ export default function Danas() {
   const goals = useKind<GoalData>('goal').sort((a, b) => a.data.order - b.data.order)
   const events = useKind<EventData>('event')
   const cats = useKind<Category>('category')
-  const [hideDone, setHideDone] = useState(true)
+  const [hideDone, setHideDone] = useState(false)
   const [adding, setAdding] = useState(false)
 
   // Uskoro: ispiti, kolokvijumi i ostalo sa fakulteta u narednih 60 dana
