@@ -3,8 +3,8 @@ export const MONTHS = [
   'jul', 'avgust', 'septembar', 'oktobar', 'novembar', 'decembar',
 ]
 export const MONTHS_GEN = [
-  'januara', 'februara', 'marta', 'aprila', 'maja', 'juna',
-  'jula', 'avgusta', 'septembra', 'oktobra', 'novembra', 'decembra',
+  'januar', 'februar', 'mart', 'april', 'maj', 'jun',
+  'jul', 'avgust', 'septembar', 'oktobar', 'novembar', 'decembar',
 ]
 export const DAYS_SHORT = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned']
 export const DAYS_MIN = ['P', 'U', 'S', 'Č', 'P', 'S', 'N']
