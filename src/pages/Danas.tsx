@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
 import { useKind, useVersion } from '../lib/store'
 import type { Category, EventData, GoalData } from '../lib/types'
 import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
@@ -9,7 +8,6 @@ import { PERIODS } from '../data/ftn'
 import { go } from '../lib/router'
 import { Card, Dot, cx } from '../ui/kit'
 import { ObligationList } from '../ui/ObligationList'
-import { EventEditor } from '../ui/EventEditor'
 
 function greeting() {
   const h = new Date().getHours()
@@ -26,8 +24,6 @@ export default function Danas() {
   const goals = useKind<GoalData>('goal').sort((a, b) => a.data.order - b.data.order)
   const events = useKind<EventData>('event')
   const cats = useKind<Category>('category')
-  const [hideDone, setHideDone] = useState(false)
-  const [adding, setAdding] = useState(false)
   const [allUpcoming, setAllUpcoming] = useState(false)
 
   // Uskoro: sve iz kalendara u narednih 14 (ili 90) dana
@@ -71,50 +67,40 @@ export default function Danas() {
             {onTrip && <span className="text-sm font-normal text-violet-600 ml-2">· na putu: {onTrip.data.title}</span>}
           </h1>
         </div>
-        {goals.length > 0 ? (
-          <button onClick={() => go('ciljevi')} className="flex flex-wrap gap-x-5 gap-y-1 text-left" title="Ciljevi">
-            {goals.map((g) => {
-              const p = goalProgress(g.data)
-              return (
-                <div key={g.id} className="w-36">
-                  <div className="flex justify-between text-xs text-ink-soft">
-                    <span className="truncate">{g.data.title}</span>
-                    <span className="tabular shrink-0 ml-1">{Math.round(p.pct)}%</span>
-                  </div>
-                  <div className="h-1 rounded-full bg-paper-sunk overflow-hidden mt-0.5">
-                    <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
-                  </div>
-                  <div className="text-xs text-ink-faint tabular truncate mt-0.5">{p.text}</div>
-                </div>
-              )
-            })}
-          </button>
-        ) : (
-          <a href="#/ciljevi" className="text-xs text-accent">
-            + Postavi ciljeve
-          </a>
-        )}
       </header>
+
+      {goals.length > 0 ? (
+        <button onClick={() => go('ciljevi')} className="flex gap-4 mb-3 text-left w-full" title="Ciljevi">
+          {goals.map((g) => {
+            const p = goalProgress(g.data)
+            return (
+              <div key={g.id} className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2">
+                <div className="flex justify-between text-sm font-medium">
+                  <span className="truncate">{g.data.title}</span>
+                  <span className="tabular shrink-0 ml-2 text-ink-soft">{Math.round(p.pct)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
+                  <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
+                </div>
+                <div className="text-xs text-ink-faint tabular truncate mt-1">{p.text}</div>
+              </div>
+            )
+          })}
+        </button>
+      ) : (
+        <a href="#/ciljevi" className="text-xs text-accent mb-3 inline-block">
+          + Postavi ciljeve
+        </a>
+      )}
 
       <div className="md:flex-1 md:min-h-0 grid md:grid-cols-[1fr_300px] gap-4">
         {/* Obaveze */}
         <Card className="flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <h2 className="text-base font-semibold">Obaveze za danas</h2>
-            <div className="flex items-center gap-3 text-xs">
-              <button onClick={() => setHideDone(!hideDone)} className="text-ink-soft hover:text-ink">
-                {hideDone ? 'Prikaži urađeno' : 'Sakrij urađeno'}
-              </button>
-              <button onClick={() => setAdding(true)} className="text-accent inline-flex items-center gap-0.5">
-                <Plus size={13} /> Dodaj
-              </button>
-              <a href="#/dan" className="text-ink-soft hover:text-ink">
-                Po satima →
-              </a>
-            </div>
           </div>
           <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
-            <ObligationList date={date} hideDone={hideDone} />
+            <ObligationList date={date} />
           </div>
         </Card>
 
@@ -168,7 +154,6 @@ export default function Danas() {
         </Card>
       </div>
 
-      <EventEditor open={adding} onClose={() => setAdding(false)} date={date} />
     </div>
   )
 }
