@@ -360,13 +360,12 @@ export function obligationsFor(date: string): Obligation[] {
     md.data.meals.forEach((m, i) => {
       out.push({
         key: 'ml:' + m.id,
-        title: m.name,
+        title: `Obrok ${i + 1} – ${m.name}`,
         time: exp[i] !== null ? fromMin(exp[i]!) : undefined,
         color: '#f59e0b',
         kind: 'meal',
         done: !!m.eatenAt,
         toggle: () => (m.eatenAt ? setMealEaten(date, m.id, null) : markMealEaten(date, m.id)),
-        sub: `${m.kcal} kcal · ${m.protein} g`,
       })
     })
   }
