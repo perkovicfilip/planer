@@ -211,7 +211,7 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
             type="number"
             step="0.01"
             className="w-full"
-            placeholder="npr. 8.00"
+            placeholder="npr. 8.00 (znači 8.00+)"
             value={d.avgTarget ?? ''}
             onChange={(e) => set('avgTarget', e.target.value ? Number(e.target.value.replace(',', '.')) : undefined)}
           />
