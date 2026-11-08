@@ -127,7 +127,7 @@ function DayTip() {
     rows.push({
       color: cat?.color ?? '#64748b',
       title: e.data.title,
-      sub: cat && cat.name !== e.data.title ? cat.name : undefined,
+      sub: [cat && cat.name !== e.data.title ? cat.name : '', e.data.place ? '· ' + e.data.place : ''].filter(Boolean).join(' ') || undefined,
       time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
     })
   }

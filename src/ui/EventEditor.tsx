@@ -30,6 +30,7 @@ export function EventEditor({
   const [from, setFrom] = useState(start ?? '')
   const [to, setTo] = useState('')
   const [name, setName] = useState('')
+  const [place, setPlace] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function EventEditor({
       setFrom(start ?? '')
       setTo('')
       setName('')
+      setPlace('')
       setEditId(null)
     }
   }, [open, start, day])
@@ -53,6 +55,7 @@ export function EventEditor({
     if (!c) return
     store.put<EventData>('event', {
       title: name.trim() || c.name,
+      place: place.trim() || undefined,
       categoryId: catId,
       date: day,
       start: from || undefined,
@@ -85,11 +88,16 @@ export function EventEditor({
           {onDay.map((e) => {
             const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
             return (
-              <div key={e.id} className="flex items-center gap-2.5 py-1.5">
+              <div key={e.id} className="py-1.5">
+              <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c?.color ?? '#64748b' }} />
                 <span className="flex-1 min-w-0">
                   <span className="block truncate font-medium">{e.data.title}</span>
-                  {c && c.name !== e.data.title && <span className="block truncate text-xs text-ink-faint">{c.name}</span>}
+                  {((c && c.name !== e.data.title) || e.data.place) && (
+                    <span className="block truncate text-xs text-ink-faint">
+                      {[c && c.name !== e.data.title ? c.name : '', e.data.place ? '📍 ' + e.data.place : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                 </span>
                 {editId === e.id ? (
                   <>
@@ -121,7 +129,7 @@ export function EventEditor({
                         {e.data.end ? `–${e.data.end}` : ''}
                       </span>
                     )}
-                    <button title="Izmeni vreme" className="text-ink-faint hover:text-ink" onClick={() => setEditId(e.id)}>
+                    <button title="Izmeni vreme i mesto" className="text-ink-faint hover:text-ink" onClick={() => setEditId(e.id)}>
                       <Pencil size={15} />
                     </button>
                   </>
@@ -129,6 +137,15 @@ export function EventEditor({
                 <button title="Obriši" className="text-ink-faint hover:text-rose-600" onClick={() => store.remove(e.id)}>
                   <X size={17} />
                 </button>
+              </div>
+              {editId === e.id && (
+                <input
+                  className="w-full mt-1.5 py-1 text-sm"
+                  placeholder="Mesto (opciono)"
+                  value={e.data.place ?? ''}
+                  onChange={(ev) => store.update<EventData>(e.id, (d) => ({ ...d, place: ev.target.value || undefined }))}
+                />
+              )}
               </div>
             )
           })}
@@ -152,6 +169,13 @@ export function EventEditor({
             placeholder="Naziv (opciono, npr. PZ1 i PZ2)"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && add()}
+          />
+          <input
+            className="w-full mb-3"
+            placeholder="Mesto (opciono)"
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()}
           />
           <div className="flex items-center gap-2">

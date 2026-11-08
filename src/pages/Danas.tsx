@@ -29,7 +29,7 @@ export default function Danas() {
   // Uskoro: sve iz kalendara u narednih 14 (ili 90) dana
   const catMap = new Map(cats.map((c) => [c.id, c.data]))
   const horizon = addDays(date, allUpcoming ? 90 : 14)
-  const upcoming: { date: string; title: string; sub?: string; time?: string; color: string; id: string }[] = []
+  const upcoming: { date: string; title: string; sub?: string; time?: string; place?: string; color: string; id: string }[] = []
   for (const e of events) {
     const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
     const sub = c && c.name !== e.data.title ? c.name : undefined
@@ -47,6 +47,7 @@ export default function Danas() {
       title: e.data.title,
       sub,
       time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
+      place: e.data.place,
       color: c?.color ?? '#64748b',
       id: e.id,
     })
@@ -141,6 +142,7 @@ export default function Danas() {
                         <div className="text-xs text-ink-faint truncate">
                           {fmtShort(u.date)}
                           {u.time && ` · ${u.time}`}
+                          {u.place && ` · ${u.place}`}
                         </div>
                       </div>
                       <span className={cx('text-xs tabular shrink-0', d <= 3 ? 'text-rose-600 font-semibold' : d <= 7 ? 'text-amber-600' : 'text-ink-faint')}>

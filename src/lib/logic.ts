@@ -307,7 +307,7 @@ export function obligationsFor(date: string): Obligation[] {
       kind: 'event',
       done: isEventDone(e.data, date),
       toggle: () => toggleEventDone(e.id, date),
-      sub: c?.name,
+      sub: [c?.name, e.data.place].filter(Boolean).join(' · ') || undefined,
     })
   }
 

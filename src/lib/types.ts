@@ -50,6 +50,7 @@ export interface EventData {
   endDate?: string // za višednevne (npr. Na putu)
   start?: string // HH:MM
   end?: string
+  place?: string
   notes?: string
   repeat: Repeat
   repeatUntil?: string
