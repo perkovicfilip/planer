@@ -3,11 +3,11 @@ import { useKind, useVersion } from '../lib/store'
 import type { Category, EventData, GoalData } from '../lib/types'
 import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
 import { occursOn, useSettings } from '../lib/logic'
-import { avgProgress, goalProgress } from '../lib/goals'
+import { avgProgress, goalProgress, progressColor } from '../lib/goals'
 import { PERIODS } from '../data/ftn'
 import { go } from '../lib/router'
 import { Card, Dot, cx } from '../ui/kit'
-import { ObligationList } from '../ui/ObligationList'
+import { ObligationList, ObligationStrip } from '../ui/ObligationList'
 
 function greeting() {
   const h = new Date().getHours()
@@ -82,13 +82,13 @@ export default function Danas() {
                   <span className="tabular shrink-0 ml-2 text-ink-soft">{Math.round(p.pct)}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
-                  <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
+                  <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: progressColor(p.pct) }} />
                 </div>
                 <div className="text-xs text-ink-faint tabular truncate mt-1">{p.text}</div>
                 {a && (
                   <>
                     <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
-                      <div className="h-full rounded-full" style={{ width: `${a.pct}%`, background: g.data.color ?? 'rgb(var(--accent))' }} />
+                      <div className="h-full rounded-full" style={{ width: `${a.pct}%`, background: progressColor(a.pct) }} />
                     </div>
                     <div className="text-xs text-ink-faint tabular truncate mt-1">{a.text}</div>
                   </>
@@ -111,6 +111,9 @@ export default function Danas() {
           </div>
           <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
             <ObligationList date={date} />
+          </div>
+          <div className="px-4 pb-3">
+            <ObligationStrip />
           </div>
         </Card>
 

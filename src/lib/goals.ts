@@ -87,3 +87,9 @@ export function bulkStartWeight(): WeightData | undefined {
     .sort((a, b) => a.date.localeCompare(b.date))
   return all.find((w) => w.date >= from) ?? undefined
 }
+
+/** Boja trake cilja: crvena na 0%, postepeno ka zelenoj na 100%. */
+export function progressColor(pct: number): string {
+  const p = Math.max(0, Math.min(100, pct)) / 100
+  return `hsl(${Math.round(120 * p)} 70% 45%)`
+}

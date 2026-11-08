@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useVersion } from '../lib/store'
+import { store, useVersion } from '../lib/store'
+import { addDays, fmtShort, today } from '../lib/dates'
 import { obligationsFor, type Obligation } from '../lib/logic'
 import { Empty, cx } from './kit'
 
@@ -44,6 +45,75 @@ export function ObligationList({ date, hideDone = false, kinds }: { date: string
         ))}
       </div>
       {hideDone && done > 0 && <div className="text-xs text-ink-faint mt-2">{done} urađeno je sklonjeno sa liste.</div>}
+    </div>
+  )
+}
+
+/** Traka poslednjih 60 dana: zeleno = sve obaveze urađene, crveno = bar jedna nije. */
+export function ObligationStrip() {
+  useVersion()
+  const DAYS = 60
+  const end = today()
+  const start = addDays(end, -(DAYS - 1))
+  const firstData = [
+    ...store.list<{ date: string }>('actday').map((x) => x.data.date),
+    ...store.list<{ date: string }>('mealday').map((x) => x.data.date),
+  ]
+    .filter(Boolean)
+    .sort()[0] ?? end
+  const days = Array.from({ length: DAYS }, (_, i) => addDays(start, i))
+  const status = new Map<string, 'ok' | 'bad' | 'none'>()
+  for (const d of days) {
+    if (d < firstData) {
+      status.set(d, 'none')
+      continue
+    }
+    const list = obligationsFor(d)
+    status.set(d, list.length === 0 ? 'none' : list.every((o) => o.done) ? 'ok' : d === end ? 'none' : 'bad')
+  }
+  const tracked = days.filter((d) => d < end && status.get(d) !== 'none')
+  const okCount = tracked.filter((d) => status.get(d) === 'ok').length
+  let streak = 0
+  for (let i = days.length - 1; i >= 0; i--) {
+    const st = status.get(days[i])
+    if (days[i] === end && st !== 'ok') continue
+    if (st === 'ok') streak++
+    else break
+  }
+  return (
+    <div className="pt-3 border-t border-line">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1.5 text-sm">
+        <span className="font-semibold">Poslednjih {DAYS} dana</span>
+        <span className="text-ink-soft">
+          Sve urađeno <b className="text-emerald-600">{okCount}</b> od {tracked.length} dana · niz <b>{streak}</b>
+        </span>
+      </div>
+      <div className="flex h-7 rounded-lg overflow-hidden border border-line">
+        {days.map((d) => {
+          const st = status.get(d)
+          const bg = st === 'ok' ? '#16a34a' : st === 'bad' ? '#e11d48' : 'rgb(var(--paper-sunk))'
+          return (
+            <div
+              key={d}
+              title={`${fmtShort(d)}${st === 'ok' ? ': sve urađeno' : st === 'bad' ? ': nije sve urađeno' : ''}`}
+              className={cx('flex-1 border-r border-black/10 last:border-r-0', d === end && 'ring-2 ring-inset ring-ink')}
+              style={{ background: bg }}
+            />
+          )
+        })}
+      </div>
+      <div className="flex justify-between text-xs text-ink-faint mt-1">
+        <span>{fmtShort(start)}</span>
+        <span className="flex gap-3">
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#16a34a]" /> sve urađeno
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#e11d48]" /> nije sve
+          </span>
+        </span>
+        <span>danas</span>
+      </div>
     </div>
   )
 }

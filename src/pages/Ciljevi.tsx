@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Plus, Pencil } from 'lucide-react'
 import { store, useKind, useVersion } from '../lib/store'
 import type { GoalData, GoalType } from '../lib/types'
-import { avgProgress, goalProgress, fmt, espbInApp, latestWeight, espbStats } from '../lib/goals'
+import { avgProgress, goalProgress, progressColor, fmt, espbInApp, latestWeight, espbStats } from '../lib/goals'
 import { balance, hasTransactions } from '../lib/finance'
 import { getSettings } from '../lib/logic'
 import { DEFAULT_SETTINGS, type SettingsData, type WeightData } from '../lib/types'
 import { addDays, fmtShort, today, daysBetween } from '../lib/dates'
-import { Button, Card, ColorPicker, Empty, Field, IconButton, Modal, PageHeader, Progress } from '../ui/kit'
+import { Button, Card, Empty, Field, IconButton, Modal, PageHeader, Progress } from '../ui/kit'
 
 const TYPES: { v: GoalType; label: string; hint: string }[] = [
   { v: 'kg', label: 'Kilaža', hint: 'Prati se automatski iz merenja kilaže.' },
@@ -53,7 +53,7 @@ export default function Ciljevi() {
               </div>
               <div className="text-lg font-semibold tabular mt-3">{p.text}</div>
               <div className="mt-2">
-                <Progress value={p.pct} max={100} color={g.data.color} height={10} />
+                <Progress value={p.pct} max={100} color={progressColor(p.pct)} height={10} />
               </div>
               <div className="text-xs text-ink-faint mt-1.5">{Math.round(p.pct)}% puta</div>
               {(() => {
@@ -63,7 +63,7 @@ export default function Ciljevi() {
                   <>
                     <div className="text-lg font-semibold tabular mt-3">{a.text.replace('prosek ', 'Prosek ')}</div>
                     <div className="mt-2">
-                      <Progress value={a.pct} max={100} color={g.data.color} height={10} />
+                      <Progress value={a.pct} max={100} color={progressColor(a.pct)} height={10} />
                     </div>
                   </>
                 )
@@ -224,9 +224,6 @@ function GoalEditor({ id, onClose, count }: { id: string | 'new' | null; onClose
       )}
       <Field label="Rok">
         <input type="date" className="w-full" value={d.deadline ?? ''} onChange={(e) => set('deadline', e.target.value || undefined)} />
-      </Field>
-      <Field label="Boja">
-        <ColorPicker value={d.color ?? '#2563eb'} onChange={(c) => set('color', c)} />
       </Field>
       {d.target > 0 && <div className="text-xs text-ink-faint">Cilj: {fmt(d.target)}</div>}
     </Modal>
