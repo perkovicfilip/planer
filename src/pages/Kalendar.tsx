@@ -5,7 +5,7 @@ import { distinctColor } from '../lib/colors'
 import type { Category, EventData, Item } from '../lib/types'
 import { DAYS_MIN, DAYS_SHORT, MONTHS, addDays, iso, monthGrid, parse, today, weekday } from '../lib/dates'
 import { FTN_LEGEND, MILESTONES, ftnMark, periodsOn } from '../data/ftn'
-import { occursOn } from '../lib/logic'
+import { isResolved, occursOn } from '../lib/logic'
 import { Button, Card, Dot, IconButton, PageHeader, Segmented, cx } from '../ui/kit'
 import { EventEditor } from '../ui/EventEditor'
 
@@ -23,8 +23,10 @@ function useMarks(from: string, to: string, hidden: string[]) {
   return useMemo(() => {
     const catColor = new Map(cats.map((c) => [c.id, c.data.color]))
     const marks = new Map<string, DayMark>()
+    const now = today()
     for (const e of events) {
       if (e.data.categoryId && hidden.includes(e.data.categoryId)) continue
+      if (isResolved(e.data, now)) continue
       const color = (e.data.categoryId && catColor.get(e.data.categoryId)) || '#64748b'
       const multi = !!e.data.endDate && e.data.endDate !== e.data.date
       let d = e.data.date > from ? e.data.date : from
@@ -126,7 +128,7 @@ function DayTip() {
     const cat = e.data.categoryId ? store.get<Category>(e.data.categoryId)?.data : undefined
     rows.push({
       color: cat?.color ?? '#64748b',
-      title: e.data.title,
+      title: (e.data.deadline ? 'Rok: ' : '') + e.data.title,
       sub: [cat && cat.name !== e.data.title ? cat.name : '', e.data.place ? '· ' + e.data.place : ''].filter(Boolean).join(' ') || undefined,
       time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
     })

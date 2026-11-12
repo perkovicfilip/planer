@@ -52,6 +52,22 @@ export function eventsOn(events: Item<EventData>[], date: string) {
     .sort((a, b) => (a.data.start || '99').localeCompare(b.data.start || '99'))
 }
 
+/** Jednokratni događaj koji je urađen ili je prošao — više se ne prikazuje u kalendaru. */
+export function isResolved(e: EventData, todayIso: string) {
+  if (e.repeat !== 'none') return false
+  if ((e.doneDates ?? []).length > 0) return true
+  if (e.deadline) return false // rok stoji dok se ne štiklira
+  return (e.endDate || e.date) < todayIso
+}
+
+/** Rokovi koji još nisu urađeni. */
+export function openDeadlines(): Item<EventData>[] {
+  return store
+    .list<EventData>('event')
+    .filter((e) => e.data.deadline && !(e.data.doneDates ?? []).length)
+    .sort((a, b) => a.data.date.localeCompare(b.data.date))
+}
+
 export function isEventDone(e: EventData, date: string) {
   return (e.doneDates ?? []).includes(date)
 }
@@ -298,6 +314,7 @@ export function obligationsFor(date: string): Obligation[] {
   for (const e of eventsOn(store.list<EventData>('event'), date)) {
     // višednevni događaji (npr. Na putu) nisu obaveza za štikliranje
     if (e.data.endDate && e.data.endDate !== e.data.date && !e.data.start) continue
+    if (e.data.deadline) continue // rokovi imaju svoj prozor u Danas
     const c = e.data.categoryId ? cats.get(e.data.categoryId) : undefined
     out.push({
       key: 'ev:' + e.id + ':' + date,

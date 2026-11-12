@@ -4,7 +4,7 @@ import { store, useKind } from '../lib/store'
 import { fmtLong, iso } from '../lib/dates'
 import { occursOn } from '../lib/logic'
 import type { Category, EventData } from '../lib/types'
-import { Button, Modal } from './kit'
+import { Button, Modal, cx } from './kit'
 
 /**
  * Prozor za jedan dan: šta je upisano + izbor događaja iz liste i opciono vreme od–do.
@@ -32,6 +32,7 @@ export function EventEditor({
   const [name, setName] = useState('')
   const [place, setPlace] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
+  const [isDeadline, setIsDeadline] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -41,6 +42,7 @@ export function EventEditor({
       setName('')
       setPlace('')
       setEditId(null)
+      setIsDeadline(false)
     }
   }, [open, start, day])
 
@@ -58,8 +60,9 @@ export function EventEditor({
       place: place.trim() || undefined,
       categoryId: catId,
       date: day,
-      start: from || undefined,
-      end: from && to ? to : undefined,
+      start: !isDeadline && from ? from : undefined,
+      end: !isDeadline && from && to ? to : undefined,
+      deadline: isDeadline || undefined,
       repeat: 'none',
       remindBefore: [],
     })
@@ -92,7 +95,10 @@ export function EventEditor({
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c?.color ?? '#64748b' }} />
                 <span className="flex-1 min-w-0">
-                  <span className="block truncate font-medium">{e.data.title}</span>
+                  <span className={cx('block truncate font-medium', (e.data.doneDates ?? []).length > 0 && e.data.repeat === 'none' && 'line-through opacity-60')}>
+                    {e.data.deadline && <span className="text-xs font-semibold text-rose-600 mr-1.5">ROK</span>}
+                    {e.data.title}
+                  </span>
                   {((c && c.name !== e.data.title) || e.data.place) && (
                     <span className="block truncate text-xs text-ink-faint">
                       {[c && c.name !== e.data.title ? c.name : '', e.data.place ? '📍 ' + e.data.place : ''].filter(Boolean).join(' · ')}
@@ -156,6 +162,21 @@ export function EventEditor({
         <p className="text-ink-soft">Prvo dodaj događaj u listu desno u kalendaru.</p>
       ) : (
         <>
+          <div className="flex rounded-lg bg-paper-sunk p-0.5 text-sm mb-3">
+            {[
+              { v: false, label: 'Termin (tačan dan)' },
+              { v: true, label: 'Rok (uraditi do ovog dana)' },
+            ].map((o) => (
+              <button
+                key={String(o.v)}
+                type="button"
+                onClick={() => setIsDeadline(o.v)}
+                className={cx('flex-1 px-3 py-1.5 rounded-md', isDeadline === o.v ? 'bg-paper-raised font-semibold shadow-sm' : 'text-ink-faint hover:text-ink')}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <select className="w-full mb-3" value={catId} onChange={(e) => setCatId(e.target.value)} autoFocus>
             <option value="">Izaberi događaj…</option>
             {sortedCats.map((c) => (
@@ -166,7 +187,7 @@ export function EventEditor({
           </select>
           <input
             className="w-full mb-3"
-            placeholder="Naziv (opciono, npr. PZ1 i PZ2)"
+            placeholder={isDeadline ? 'Naziv (npr. Predaja K1)' : 'Naziv (opciono, npr. PZ1 i PZ2)'}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()}
@@ -178,12 +199,14 @@ export function EventEditor({
             onChange={(e) => setPlace(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()}
           />
+          {!isDeadline && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-ink-soft w-6">Od</span>
             <input type="time" className="w-[8rem]" value={from} onChange={(e) => setFrom(e.target.value)} />
             <span className="text-sm text-ink-soft ml-2">Do</span>
             <input type="time" className="w-[8rem]" value={to} onChange={(e) => setTo(e.target.value)} disabled={!from} />
           </div>
+          )}
         </>
       )}
     </Modal>

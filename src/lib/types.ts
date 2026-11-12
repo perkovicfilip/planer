@@ -55,6 +55,7 @@ export interface EventData {
   repeat: Repeat
   repeatUntil?: string
   doneDates?: string[] // za ponavljajuće: datumi kad je urađeno
+  deadline?: boolean // rok: treba uraditi do datuma, stoji u Danas dok se ne štiklira
   remindBefore?: number[] // minuta pre početka
 }
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useKind, useVersion } from '../lib/store'
 import type { Category, EventData, GoalData } from '../lib/types'
 import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
-import { occursOn, useSettings } from '../lib/logic'
+import { isResolved, occursOn, openDeadlines, toggleEventDone, useSettings } from '../lib/logic'
 import { avgProgress, goalProgress, progressColor } from '../lib/goals'
 import { PERIODS } from '../data/ftn'
 import { go } from '../lib/router'
@@ -28,6 +28,7 @@ export default function Danas() {
 
   // Uskoro: sve iz kalendara u narednih 14 (ili 90) dana
   const catMap = new Map(cats.map((c) => [c.id, c.data]))
+  const deadlines = openDeadlines()
   const horizon = addDays(date, allUpcoming ? 90 : 14)
   const upcoming: { date: string; title: string; sub?: string; time?: string; place?: string; color: string; id: string }[] = []
   for (const e of events) {
@@ -40,6 +41,7 @@ export default function Danas() {
       continue
     }
     if (e.data.repeat !== 'none') continue
+    if (e.data.deadline || isResolved(e.data, date)) continue
     const last = e.data.endDate ?? e.data.date
     if (last < date || e.data.date > horizon) continue
     upcoming.push({
@@ -117,8 +119,47 @@ export default function Danas() {
           </div>
         </Card>
 
+        <div className="flex flex-col gap-4 min-h-0">
+        {/* Rokovi */}
+        <Card className="flex flex-col min-h-0 max-h-[45%] shrink-0">
+          <div className="px-4 pt-3 pb-1">
+            <h2 className="text-base font-semibold">Rokovi</h2>
+          </div>
+          <div className="px-4 pb-3 md:overflow-y-auto md:min-h-0 space-y-2">
+            {deadlines.length === 0 ? (
+              <div className="text-sm text-ink-faint py-1">Nema otvorenih rokova.</div>
+            ) : (
+              deadlines.map((e) => {
+                const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+                const left = daysBetween(date, e.data.date)
+                return (
+                  <div
+                    key={e.id}
+                    role="button"
+                    tabIndex={0}
+                    title="Klikni kad završiš — nestaje iz kalendara"
+                    onClick={() => toggleEventDone(e.id, date)}
+                    className="meal-todo rounded-xl border-2 px-3 py-2 cursor-pointer select-none"
+                  >
+                    <div className="text-base leading-tight truncate">
+                      <span className="font-semibold">{e.data.title}</span>
+                      {c && c.name !== e.data.title && <span className="opacity-70"> {c.name}</span>}
+                    </div>
+                    <div className="flex justify-between text-xs mt-0.5">
+                      <span className="opacity-70">do {fmtShort(e.data.date)}</span>
+                      <span className={cx('tabular', left <= 3 ? 'text-rose-600 font-semibold' : left <= 7 ? 'text-amber-600' : 'opacity-70')}>
+                        {left < 0 ? `kasni ${-left} d` : left === 0 ? 'danas' : `još ${left} d`}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </Card>
+
         {/* Uskoro */}
-        <Card className="flex flex-col min-h-0">
+        <Card className="flex flex-col min-h-0 flex-1">
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <h2 className="text-base font-semibold">Uskoro</h2>
             <div className="flex rounded-lg bg-paper-sunk p-0.5 text-xs">
@@ -179,6 +220,7 @@ export default function Danas() {
             )}
           </div>
         </Card>
+        </div>
       </div>
 
     </div>
