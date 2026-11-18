@@ -1,0 +1,228 @@
+import { useState } from 'react'
+import { useKind, useVersion } from '../lib/store'
+import type { Category, EventData, GoalData } from '../lib/types'
+import { addDays, fmtLong, fmtShort, inDays, today, daysBetween } from '../lib/dates'
+import { isResolved, occursOn, openDeadlines, toggleEventDone, useSettings } from '../lib/logic'
+import { avgProgress, goalProgress, progressColor } from '../lib/goals'
+import { PERIODS } from '../data/ftn'
+import { go } from '../lib/router'
+import { Card, Dot, cx } from '../ui/kit'
+import { ObligationList, ObligationStrip } from '../ui/ObligationList'
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 5) return 'Laku noć'
+  if (h < 11) return 'Dobro jutro'
+  if (h < 18) return 'Dobar dan'
+  return 'Dobro veče'
+}
+
+export default function Danas() {
+  useVersion()
+  const date = today()
+  const [settings] = useSettings()
+  const goals = useKind<GoalData>('goal').sort((a, b) => a.data.order - b.data.order)
+  const events = useKind<EventData>('event')
+  const cats = useKind<Category>('category')
+  const [allUpcoming, setAllUpcoming] = useState(false)
+
+  // Uskoro: sve iz kalendara u narednih 14 (ili 90) dana
+  const catMap = new Map(cats.map((c) => [c.id, c.data]))
+  const deadlines = openDeadlines()
+  const horizon = addDays(date, allUpcoming ? 90 : 14)
+  const upcoming: { date: string; title: string; sub?: string; time?: string; place?: string; color: string; id: string }[] = []
+  for (const e of events) {
+    const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+    const sub = c && c.name !== e.data.title ? c.name : undefined
+    if (e.data.repeat === 'yearly') {
+      let next = date.slice(0, 4) + e.data.date.slice(4)
+      if (next < date) next = String(Number(date.slice(0, 4)) + 1) + e.data.date.slice(4)
+      if (next <= horizon) upcoming.push({ date: next, title: e.data.title, sub, color: c?.color ?? '#f97316', id: e.id + next })
+      continue
+    }
+    if (e.data.repeat !== 'none') continue
+    if (e.data.deadline || isResolved(e.data, date)) continue
+    const last = e.data.endDate ?? e.data.date
+    if (last < date || e.data.date > horizon) continue
+    upcoming.push({
+      date: e.data.date < date ? date : e.data.date,
+      title: e.data.title,
+      sub,
+      time: e.data.start ? `${e.data.start}${e.data.end ? '–' + e.data.end : ''}` : undefined,
+      place: e.data.place,
+      color: c?.color ?? '#64748b',
+      id: e.id,
+    })
+  }
+  upcoming.sort((a, b) => a.date.localeCompare(b.date))
+  const nextPeriod = PERIODS.filter((p) => p.kind === 'rok' && p.to >= date && p.from <= horizon).sort((a, b) => a.from.localeCompare(b.from))[0]
+  const onTrip = events.find((e) => e.data.endDate && occursOn(e.data, date))
+
+  return (
+    <div className="md:flex md:flex-col md:flex-1 md:min-h-0">
+      {/* Zaglavlje + ciljevi u jednom redu */}
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 mb-3">
+        <div>
+          <div className="text-xs text-ink-faint">{fmtLong(date)}</div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            {greeting()}
+            {settings.name ? `, ${settings.name}` : ''}
+            {onTrip && <span className="text-sm font-normal text-violet-600 ml-2">· na putu: {onTrip.data.title}</span>}
+          </h1>
+        </div>
+      </header>
+
+      {goals.length > 0 ? (
+        <button onClick={() => go('ciljevi')} className="flex gap-4 mb-3 text-left w-full" title="Ciljevi">
+          {goals.map((g) => {
+            const p = goalProgress(g.data)
+            const a = avgProgress(g.data)
+            return (
+              <div key={g.id} className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2">
+                <div className="flex justify-between text-sm font-medium">
+                  <span className="truncate">{g.data.title}</span>
+                  <span className="tabular shrink-0 ml-2 text-ink-soft">{Math.round(p.pct)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
+                  <div className="h-full rounded-full" style={{ width: `${p.pct}%`, background: progressColor(p.pct) }} />
+                </div>
+                <div className="text-xs text-ink-faint tabular truncate mt-1">{p.text}</div>
+                {a && (
+                  <>
+                    <div className="h-2 rounded-full bg-paper-sunk overflow-hidden mt-1.5">
+                      <div className="h-full rounded-full" style={{ width: `${a.pct}%`, background: progressColor(a.pct) }} />
+                    </div>
+                    <div className="text-xs text-ink-faint tabular truncate mt-1">{a.text}</div>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </button>
+      ) : (
+        <a href="#/ciljevi" className="text-xs text-accent mb-3 inline-block">
+          + Postavi ciljeve
+        </a>
+      )}
+
+      <div className="md:flex-1 md:min-h-0 grid md:grid-cols-[1fr_300px] gap-4">
+        {/* Obaveze */}
+        <Card className="flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <h2 className="text-base font-semibold">Obaveze za danas</h2>
+          </div>
+          <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
+            <ObligationList date={date} />
+          </div>
+          <div className="px-4 pb-3">
+            <ObligationStrip />
+          </div>
+        </Card>
+
+        <div className="flex flex-col gap-4 min-h-0">
+        {/* Rokovi */}
+        <Card className="flex flex-col min-h-0 max-h-[45%] shrink-0">
+          <div className="px-4 pt-3 pb-1">
+            <h2 className="text-base font-semibold">Rokovi</h2>
+          </div>
+          <div className="px-4 pb-3 md:overflow-y-auto md:min-h-0 space-y-2">
+            {deadlines.length === 0 ? (
+              <div className="text-sm text-ink-faint py-1">Nema otvorenih rokova.</div>
+            ) : (
+              deadlines.map((e) => {
+                const c = e.data.categoryId ? catMap.get(e.data.categoryId) : undefined
+                const left = daysBetween(date, e.data.date)
+                return (
+                  <div
+                    key={e.id}
+                    role="button"
+                    tabIndex={0}
+                    title="Klikni kad završiš — nestaje iz kalendara"
+                    onClick={() => toggleEventDone(e.id, date)}
+                    className="meal-todo rounded-xl border-2 px-3 py-2 cursor-pointer select-none"
+                  >
+                    <div className="text-base leading-tight truncate">
+                      <span className="font-semibold">{e.data.title}</span>
+                      {c && c.name !== e.data.title && <span className="opacity-70"> {c.name}</span>}
+                    </div>
+                    <div className="flex justify-between text-xs mt-0.5">
+                      <span className="opacity-70">do {fmtShort(e.data.date)}</span>
+                      <span className={cx('tabular', left <= 3 ? 'text-rose-600 font-semibold' : left <= 7 ? 'text-amber-600' : 'opacity-70')}>
+                        {left < 0 ? `kasni ${-left} d` : left === 0 ? 'danas' : `još ${left} d`}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </Card>
+
+        {/* Uskoro */}
+        <Card className="flex flex-col min-h-0 flex-1">
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <h2 className="text-base font-semibold">Uskoro</h2>
+            <div className="flex rounded-lg bg-paper-sunk p-0.5 text-xs">
+              {[14, 90].map((n) => {
+                const on = (n === 90) === allUpcoming
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setAllUpcoming(n === 90)}
+                    className={cx('px-2.5 py-1 rounded-md', on ? 'bg-paper-raised font-semibold shadow-sm' : 'text-ink-faint hover:text-ink')}
+                  >
+                    {n} dana
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="px-4 pb-2 md:overflow-y-auto md:min-h-0 md:flex-1">
+            {upcoming.length === 0 && !nextPeriod ? (
+              <div className="text-sm text-ink-faint py-3">{allUpcoming ? 'Ništa u narednih 90 dana.' : 'Ništa u narednih 14 dana.'}</div>
+            ) : (
+              <ul className="divide-y divide-line">
+                {upcoming.map((u) => {
+                  const d = daysBetween(date, u.date)
+                  return (
+                    <li key={u.id} className="flex items-center gap-2.5 py-2">
+                      <Dot color={u.color} size={8} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base leading-tight truncate">
+                          <span className="font-semibold">{u.title}</span>
+                          {u.sub && <span className="text-ink-soft"> {u.sub}</span>}
+                        </div>
+                        <div className="text-xs text-ink-faint truncate">
+                          {fmtShort(u.date)}
+                          {u.time && ` · ${u.time}`}
+                          {u.place && ` · ${u.place}`}
+                        </div>
+                      </div>
+                      <span className={cx('text-xs tabular shrink-0', d <= 3 ? 'text-rose-600 font-semibold' : d <= 7 ? 'text-amber-600' : 'text-ink-faint')}>
+                        {inDays(u.date)}
+                      </span>
+                    </li>
+                  )
+                })}
+                {nextPeriod && (
+                  <li className="flex items-center gap-2.5 py-2">
+                    <span className="w-2 h-2 rounded-full tint ring-1 ring-line" style={{ '--tint': nextPeriod.tint } as React.CSSProperties} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base leading-tight truncate">{nextPeriod.name}</div>
+                      <div className="text-xs text-ink-faint">
+                        {fmtShort(nextPeriod.from)} – {fmtShort(nextPeriod.to)}
+                      </div>
+                    </div>
+                    <span className="text-xs tabular text-ink-faint shrink-0">{nextPeriod.from <= date ? 'u toku' : inDays(nextPeriod.from)}</span>
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        </Card>
+        </div>
+      </div>
+
+    </div>
+  )
+}

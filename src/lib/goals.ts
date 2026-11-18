@@ -1,0 +1,95 @@
+import { store } from './store'
+import { getSettings } from './logic'
+import { balance, hasTransactions } from './finance'
+import type { GoalData, SubjectData, WeightData } from './types'
+
+export function latestWeight(): WeightData | undefined {
+  return store
+    .list<WeightData>('weight')
+    .map((w) => w.data)
+    .sort((a, b) => b.date.localeCompare(a.date))[0]
+}
+
+export function espbStats() {
+  const s = getSettings()
+  const subjects = store.list<SubjectData>('subject').map((x) => x.data)
+  const passed = subjects.filter((x) => x.status === 'polozen')
+  const espb = s.baseEspb + passed.reduce((a, x) => a + (x.espb || 0), 0)
+  const graded = passed.filter((x) => x.grade && x.grade >= 6)
+  const sumBase = s.baseAverage !== null ? s.baseAverage * s.basePassed : 0
+  const n = (s.baseAverage !== null ? s.basePassed : 0) + graded.length
+  const avg = n > 0 ? (sumBase + graded.reduce((a, x) => a + (x.grade ?? 0), 0)) / n : null
+  const remaining = subjects.filter((x) => x.status !== 'polozen')
+  return {
+    espb,
+    total: s.totalEspb,
+    passedCount: s.basePassed + passed.length,
+    passedInApp: passed.length,
+    remaining: remaining.length,
+    remainingEspb: remaining.reduce((a, x) => a + (x.espb || 0), 0),
+    average: avg,
+  }
+}
+
+export function goalProgress(g: GoalData): { current: number | null; pct: number; text: string } {
+  let current: number | null = null
+  let start = g.start ?? 0
+  if (g.type === 'kg') {
+    const w = latestWeight()
+    current = w?.kg ?? null
+    if (g.start === undefined) {
+      start = bulkStartWeight()?.kg ?? current ?? 0
+    }
+  } else if (g.type === 'espb') {
+    current = espbStats().espb
+    start = 0
+  } else if (g.type === 'predmeti') {
+    current = espbStats().passedInApp
+  } else if (g.type === 'novac' && (hasTransactions() || getSettings().balanceStart)) {
+    current = balance()
+  } else {
+    current = g.current ?? 0
+  }
+  const unit = g.unit ?? (g.type === 'kg' ? 'kg' : g.type === 'espb' ? 'ESPB' : g.type === 'novac' ? 'din' : '')
+  if (current === null) return { current, pct: 0, text: `cilj ${fmt(g.target)} ${unit}` }
+  const span = g.target - start
+  const pct = span === 0 ? 100 : Math.max(0, Math.min(100, ((current - start) / span) * 100))
+  return { current, pct, text: `${fmt(current)} / ${fmt(g.target)} ${unit}`.trim() }
+}
+
+/** Prosek kao deo cilja za faks (skala od 6 do ciljnog proseka). */
+export function avgProgress(g: GoalData): { pct: number; text: string } | null {
+  if (g.type !== 'espb' || !g.avgTarget) return null
+  const avg = espbStats().average
+  if (avg === null) return { pct: 0, text: `prosek cilj ${g.avgTarget.toFixed(2)}+` }
+  const pct = Math.max(0, Math.min(100, ((avg - 6) / (g.avgTarget - 6)) * 100))
+  return { pct, text: `prosek ${avg.toFixed(2)} / ${g.avgTarget.toFixed(2)}+` }
+}
+
+export function fmt(n: number) {
+  return Number.isInteger(n) ? n.toLocaleString('sr-Latn-RS') : n.toLocaleString('sr-Latn-RS', { maximumFractionDigits: 1 })
+}
+
+/** ESPB položeni kroz aplikaciju (predmeti označeni kao položeni). */
+export function espbInApp(): number {
+  return store
+    .list<SubjectData>('subject')
+    .filter((x) => x.data.status === 'polozen')
+    .reduce((a, x) => a + (x.data.espb || 0), 0)
+}
+
+/** Kilaža na dan početka (prvo merenje tog dana ili posle njega). */
+export function bulkStartWeight(): WeightData | undefined {
+  const from = getSettings().bulkStart || ''
+  const all = store
+    .list<WeightData>('weight')
+    .map((x) => x.data)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  return all.find((w) => w.date >= from) ?? undefined
+}
+
+/** Boja trake cilja: crvena na 0%, postepeno ka zelenoj na 100%. */
+export function progressColor(pct: number): string {
+  const p = Math.max(0, Math.min(100, pct)) / 100
+  return `hsl(${Math.round(120 * p)} 70% 45%)`
+}
